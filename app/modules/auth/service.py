@@ -1,7 +1,9 @@
-from fastapi import HTTPException, status
+from datetime import timedelta
+from jose import jwt
+from fastapi import HTTPException, status, Response
 from app.modules.auth.repository import AuthRepository
 from app.modules.auth.models import UserCreate, User
-from app.core.security import get_password_hash, verify_password, create_access_token
+from app.core.security import get_password_hash, verify_password, create_access_token, create_refresh_token
 from app.core.config import settings
 from datetime import timedelta
 
@@ -23,7 +25,7 @@ class AuthService:
         )
         return await self.repo.create(db_user)
 
-    async def authenticate_user(self, email: str, password: str) -> dict:
+    async def authenticate_user(self, email: str, password: str, response: Response) -> dict:
         user = await self.repo.get_by_email(email)
         if not user or not verify_password(password, user.hashed_password):
             raise HTTPException(
@@ -36,6 +38,21 @@ class AuthService:
             data={"sub": str(user.id)}, expires_delta=access_token_expires
         )
 
+        refresh_token_expires = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+        refresh_token = create_refresh_token(
+            data={"sub": str(user.id)}, expires_delta=refresh_token_expires
+        )
+
+        # Set refresh token in HttpOnly cookie
+        response.set_cookie(
+            key="refresh_token",
+            value=refresh_token,
+            httponly=True,
+            secure=settings.ENV != "development",
+            samesite="lax",
+            max_age=int(refresh_token_expires.total_seconds()),
+        )
+
         return {
             "access_token": access_token,
             "user": {
@@ -44,3 +61,37 @@ class AuthService:
                 "created_at": user.created_at,
             },
         }
+
+    async def refresh_access_token(self, refresh_token: str) -> dict:
+        try:
+            payload = jwt.decode(refresh_token, settings.SECRET_KEY, algorithms=["HS256"])
+            if payload.get("type") != "refresh":
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid token type",
+                )
+            user_id = payload.get("sub")
+            if user_id is None:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid token subject",
+                )
+        except jwt.JWTError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate refresh token",
+            )
+
+        user = await self.repo.get_by_id(user_id) # Assuming repo has get_by_id or similar logic
+        if not user:
+             raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found",
+            )
+
+        access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": str(user.id)}, expires_delta=access_token_expires
+        )
+
+        return {"access_token": access_token}

@@ -14,6 +14,7 @@ class Settings(BaseSettings):
 
     SECRET_KEY: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # AI Providers
     LLM_API_KEY: Optional[str] = None
@@ -29,7 +30,7 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
     ENV: str = "development"
-    
+
     # CORS
     FRONTEND_URL: str = "http://localhost:3000"
 
