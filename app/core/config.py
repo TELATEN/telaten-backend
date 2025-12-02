@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
     ENV: str = "development"
+    
+    # CORS
+    FRONTEND_URL: str = "http://localhost:3000"
 
     class Config:
         env_file = ".env"

@@ -76,6 +76,12 @@ def setup_logging():
                     extra = {k: v for k, v in event_dict.items() if k not in ["event"]}
                     if extra:
                         message_str = f"{message_str} {self.GREY}{extra}{self.RESET}"
+                elif record.args:
+                    # Handle Uvicorn access logs with positional args
+                    try:
+                        message_str = record.msg % record.args
+                    except Exception:
+                        message_str = f"{record.msg} {record.args}"
 
                 # Colorize Levels & Logger Name
                 color = self.COLORS.get(record.levelname, self.RESET)
