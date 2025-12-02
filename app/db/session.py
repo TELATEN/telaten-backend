@@ -18,5 +18,5 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 async def init_db():
     async with engine.begin() as conn:
-        # await conn.run_sync(SQLModel.metadata.drop_all) # Careful with this in production!
+        # await conn.run_sync(SQLModel.metadata.drop_all) # Reset DB for now to apply schema changes
         await conn.run_sync(SQLModel.metadata.create_all)

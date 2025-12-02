@@ -1,8 +1,11 @@
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, Relationship
 from uuid import UUID, uuid4
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, List, TYPE_CHECKING
 from sqlalchemy import Column, DateTime, JSON
+
+if TYPE_CHECKING:
+    from app.modules.milestone.models import Milestone
 
 
 class BusinessProfileBase(SQLModel):
@@ -35,6 +38,8 @@ class BusinessProfile(BusinessProfileBase, table=True):
         default_factory=lambda: datetime.now(timezone.utc),
         sa_column=Column(DateTime(timezone=True), nullable=False),
     )
+
+    milestones: List["Milestone"] = Relationship(back_populates="business_profile")
 
 
 class BusinessProfileCreate(BusinessProfileBase):

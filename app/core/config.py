@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     # AI Providers
     LLM_API_KEY: Optional[str] = None
     LLM_BASE_URL: Optional[str] = None
+    LLM_MODEL_NAME: str
 
     # Storage (Cloudflare R2)
     R2_ACCOUNT_ID: Optional[str] = None

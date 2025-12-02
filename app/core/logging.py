@@ -90,7 +90,7 @@ def setup_logging():
 
                 # Format Timestamp
                 asctime = self.formatTime(record, self.datefmt)
-                
+
                 # Final Layout: Time | Level | Logger | Message
                 return f"{self.GREY}{asctime}{self.RESET} | {levelname_colored} | {name_colored} | {message_str}"
 
@@ -108,5 +108,12 @@ def setup_logging():
         logger.setLevel(log_level)
 
     # 4. Reduce noise
-    if log_level > logging.DEBUG:
-        logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+    logging.getLogger("openai").setLevel(logging.WARNING)
+    logging.getLogger("openai._base_client").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("watchfiles").setLevel(logging.WARNING)
+    logging.getLogger("llama_index_instrumentation.dispatcher").setLevel(
+        logging.WARNING
+    )

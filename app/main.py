@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.modules.auth.routes import router as auth_router
 from app.modules.business.routes import router as business_router
+from app.modules.milestone.routes import router as milestone_router
 from app.db.session import init_db
 from app.core.logging import setup_logging
 import structlog
@@ -49,4 +50,7 @@ async def root():
 app.include_router(auth_router, prefix=f"{settings.API_V1_STR}/auth", tags=["Auth"])
 app.include_router(
     business_router, prefix=f"{settings.API_V1_STR}/business", tags=["Business"]
+)
+app.include_router(
+    milestone_router, prefix=f"{settings.API_V1_STR}/milestones", tags=["Milestones"]
 )
