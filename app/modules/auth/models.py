@@ -1,0 +1,39 @@
+from sqlmodel import SQLModel, Field
+from uuid import UUID, uuid4
+from datetime import datetime, timezone
+from typing import Optional
+from sqlalchemy import Column, DateTime
+
+
+class UserBase(SQLModel):
+    email: str = Field(unique=True, index=True)
+    name: Optional[str] = None
+
+
+class User(UserBase, table=True):
+    __tablename__ = "users"  # type: ignore
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    hashed_password: str
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
+
+
+class UserCreate(UserBase):
+    password: str
+
+
+class UserLogin(SQLModel):
+    email: str
+    password: str
+
+
+class UserRead(UserBase):
+    id: UUID
+    created_at: datetime
