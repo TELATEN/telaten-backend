@@ -10,7 +10,6 @@ class Settings(BaseSettings):
     DATABASE_URL: str = (
         "postgresql+asyncpg://postgres:postgres@localhost:5432/telaten_db"
     )
-    REDIS_URL: str = "redis://localhost:6379/0"
 
     SECRET_KEY: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60

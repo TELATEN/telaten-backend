@@ -5,6 +5,7 @@ from app.core.config import settings
 from app.modules.auth.routes import router as auth_router
 from app.modules.business.routes import router as business_router
 from app.modules.milestone.routes import router as milestone_router
+from app.modules.chat.routes import router as chat_router
 from app.db.session import init_db
 from app.core.logging import setup_logging
 import structlog
@@ -53,4 +54,7 @@ app.include_router(
 )
 app.include_router(
     milestone_router, prefix=f"{settings.API_V1_STR}/milestones", tags=["Milestones"]
+)
+app.include_router(
+    chat_router, prefix=f"{settings.API_V1_STR}/chat", tags=["Chat"]
 )

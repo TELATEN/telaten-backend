@@ -23,6 +23,14 @@ class User(UserBase, table=True):
         default_factory=lambda: datetime.now(timezone.utc),
         sa_column=Column(DateTime(timezone=True), nullable=False),
     )
+    deleted_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True, index=True),
+    )
+
+    @property
+    def is_deleted(self) -> bool:
+        return self.deleted_at is not None
 
 
 class UserCreate(UserBase):

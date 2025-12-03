@@ -1,11 +1,15 @@
 from datetime import timedelta
-from jose import jwt
+from jose import jwt, JWTError
 from fastapi import HTTPException, status, Response
 from app.modules.auth.repository import AuthRepository
 from app.modules.auth.models import UserCreate, User
-from app.core.security import get_password_hash, verify_password, create_access_token, create_refresh_token
+from app.core.security import (
+    get_password_hash,
+    verify_password,
+    create_access_token,
+    create_refresh_token,
+)
 from app.core.config import settings
-from datetime import timedelta
 
 
 class AuthService:
@@ -25,7 +29,9 @@ class AuthService:
         )
         return await self.repo.create(db_user)
 
-    async def authenticate_user(self, email: str, password: str, response: Response) -> dict:
+    async def authenticate_user(
+        self, email: str, password: str, response: Response
+    ) -> dict:
         user = await self.repo.get_by_email(email)
         if not user or not verify_password(password, user.hashed_password):
             raise HTTPException(
@@ -64,7 +70,9 @@ class AuthService:
 
     async def refresh_access_token(self, refresh_token: str) -> dict:
         try:
-            payload = jwt.decode(refresh_token, settings.SECRET_KEY, algorithms=["HS256"])
+            payload = jwt.decode(
+                refresh_token, settings.SECRET_KEY, algorithms=["HS256"]
+            )
             if payload.get("type") != "refresh":
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
@@ -76,15 +84,15 @@ class AuthService:
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Invalid token subject",
                 )
-        except jwt.JWTError:
+        except JWTError:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Could not validate refresh token",
             )
 
-        user = await self.repo.get_by_id(user_id) # Assuming repo has get_by_id or similar logic
+        user = await self.repo.get_by_id(user_id)
         if not user:
-             raise HTTPException(
+            raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User not found",
             )

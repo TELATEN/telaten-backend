@@ -29,6 +29,7 @@ class BusinessProfile(BusinessProfileBase, table=True):
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     user_id: UUID = Field(foreign_key="users.id", unique=True, index=True)
+    milestones: List["Milestone"] = Relationship(back_populates="business_profile")
 
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
@@ -38,8 +39,14 @@ class BusinessProfile(BusinessProfileBase, table=True):
         default_factory=lambda: datetime.now(timezone.utc),
         sa_column=Column(DateTime(timezone=True), nullable=False),
     )
+    deleted_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True, index=True),
+    )
 
-    milestones: List["Milestone"] = Relationship(back_populates="business_profile")
+    @property
+    def is_deleted(self) -> bool:
+        return self.deleted_at is not None
 
 
 class BusinessProfileCreate(BusinessProfileBase):

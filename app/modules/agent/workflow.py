@@ -1,6 +1,11 @@
 from llama_index.core.agent.workflow import AgentWorkflow, FunctionAgent
 from app.core.llm import get_llm
-from app.modules.agent.tools import create_milestone_tool
+from app.modules.agent.tools import (
+    create_milestone_tool,
+    list_milestones_tool,
+    update_milestone_tool,
+    delete_milestone_tool,
+)
 
 
 def get_onboarding_workflow(timeout: int = 120) -> AgentWorkflow:
@@ -23,7 +28,7 @@ def get_onboarding_workflow(timeout: int = 120) -> AgentWorkflow:
         Pass your detailed plan to them.
         """,
         llm=llm,
-        tools=[],  # Purely analytical, no external tools needed yet
+        tools=[],
         can_handoff_to=["MilestoneCreatorAgent"],
     )
 
@@ -43,13 +48,53 @@ def get_onboarding_workflow(timeout: int = 120) -> AgentWorkflow:
         """,
         llm=llm,
         tools=[create_milestone_tool],
-        can_handoff_to=[],  # End of line for this simple workflow
+        can_handoff_to=[],
     )
 
     # Wiring
     workflow = AgentWorkflow(
         agents=[strategy_agent, milestone_creator_agent],
         root_agent=strategy_agent.name,
+        timeout=timeout,
+    )
+
+    return workflow
+
+
+def get_chat_workflow(timeout: int = 120) -> AgentWorkflow:
+    llm = get_llm()
+
+    advisor_agent = FunctionAgent(
+        name="AdvisorAgent",
+        description="A proactive business advisor that manages milestones and answers questions.",
+        system_prompt="""
+        You are 'Telaten Advisor', a friendly and proactive business assistant for MSMEs.
+        
+        Your capabilities:
+        1. **View Roadmap**: Use `list_milestones_tool` to see what the user is working on.
+        2. **Update Progress**: If user says "I finished X", use `update_milestone_tool(id, status='completed')`.
+        3. **Modify Roadmap**: If user wants to change direction, use `create` or `delete` tools.
+        4. **Consultation**: Answer business questions based on the current roadmap context.
+        
+        Behavior Rules:
+        - ALWAYS check the current milestones (`list_milestones_tool`) before giving specific advice on progress.
+        - Be encouraging and use Indonesian (Bahasa Indonesia).
+        - Keep answers concise.
+        - If you modify any milestone, tell the user explicitly what you changed.
+        """,
+        llm=llm,
+        tools=[
+            list_milestones_tool,
+            update_milestone_tool,
+            create_milestone_tool,
+            delete_milestone_tool,
+        ],
+        can_handoff_to=[],
+    )
+
+    workflow = AgentWorkflow(
+        agents=[advisor_agent],
+        root_agent=advisor_agent.name,
         timeout=timeout,
     )
 

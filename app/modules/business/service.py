@@ -9,7 +9,7 @@ from app.modules.business.models import (
 from app.modules.business.repository import BusinessRepository
 from app.modules.agent.service import AgentService
 from app.db.session import AsyncSessionLocal
-import json
+from app.core.utils import format_sse
 
 
 class BusinessService:
@@ -57,17 +57,16 @@ class BusinessService:
         Generator that yields SSE events for milestone generation.
         """
 
-        def format_sse(event_type: str, message: str, data: dict | None = None) -> str:
-            payload = json.dumps({"type": event_type, "message": message, "data": data})
-            return f"data: {payload}\n\n"
-
         try:
-            # 1. Get Business Profile Data
             async with AsyncSessionLocal() as session:
                 repo = BusinessRepository(session)
                 profile = await repo.get_by_id(business_id)
                 if not profile:
                     yield format_sse("error", "Business profile not found.")
+                    return
+
+                if profile.user_id != user_id:
+                    yield format_sse("error", "Not authorized to access this business.")
                     return
 
                 business_data = {

@@ -6,6 +6,8 @@ from app.core.config import settings
 from app.db.session import get_db
 from app.modules.auth.models import User
 from app.modules.auth.repository import AuthRepository
+from app.modules.business.models import BusinessProfile
+from app.modules.business.repository import BusinessRepository
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
 
@@ -36,3 +38,18 @@ async def get_current_user(
         raise credentials_exception
 
     return user
+
+
+async def get_current_business(
+    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+) -> BusinessProfile:
+    repo = BusinessRepository(db)
+    business = await repo.get_by_user_id(current_user.id)
+
+    if not business:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User does not have a business profile. Please create one first.",
+        )
+
+    return business

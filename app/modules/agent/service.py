@@ -1,8 +1,8 @@
 from uuid import UUID
 from typing import AsyncGenerator
-import json
 import structlog
 from app.core.logging import setup_logging
+from app.core.utils import format_sse
 from app.modules.agent.workflow import get_onboarding_workflow
 from llama_index.core.agent.workflow import (
     AgentOutput,
@@ -19,13 +19,6 @@ class AgentService:
     async def run_onboarding_workflow(
         self, business_id: UUID, business_data: dict
     ) -> AsyncGenerator[str, None]:
-        """
-        Runs the onboarding agent workflow and yields SSE events directly.
-        """
-        
-        def format_sse(event_type: str, message: str, data: dict | None = None) -> str:
-            payload = json.dumps({"type": event_type, "message": message, "data": data})
-            return f"data: {payload}\n\n"
 
         try:
             yield format_sse("progress", "AI Agents initializing...", {"progress": 5})
@@ -71,14 +64,14 @@ class AgentService:
                     tool_output = str(event.tool_output)
                     msg = "Analyzing the results..."
                     yield format_sse("analysis", msg)
-                    logger.debug(f"\n[ToolResult] {tool_name} output: {tool_output[:100]}...")
+                    logger.debug(
+                        f"\n[ToolResult] {tool_name} output: {tool_output[:100]}..."
+                    )
 
-            # Await final result
-            await handler
-            
-            yield format_sse("completed", "Roadmap generated successfully!", {"progress": 100})
+            yield format_sse(
+                "completed", "Roadmap generated successfully!", {"progress": 100}
+            )
 
         except Exception as e:
             logger.error(f"Agent Workflow Error: {e}")
             yield format_sse("error", f"AI Generation failed: {str(e)}")
-            # We don't raise here to keep the stream open for the error message

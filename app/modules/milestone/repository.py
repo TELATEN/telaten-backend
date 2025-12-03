@@ -3,6 +3,7 @@ from sqlmodel import select
 from uuid import UUID
 from typing import List, Sequence
 from app.modules.milestone.models import Milestone
+from datetime import datetime, timezone
 
 
 class MilestoneRepository:
@@ -20,13 +21,18 @@ class MilestoneRepository:
         statement = (
             select(Milestone)
             .where(Milestone.business_id == business_id)
+            .where(Milestone.deleted_at is None)  # type: ignore
             .order_by(Milestone.order)  # type: ignore
         )
         result = await self.session.execute(statement)
         return result.scalars().all()
 
     async def get_by_id(self, milestone_id: UUID) -> Milestone | None:
-        statement = select(Milestone).where(Milestone.id == milestone_id)
+        statement = (
+            select(Milestone)
+            .where(Milestone.id == milestone_id)
+            .where(Milestone.deleted_at is None)  # type: ignore
+        )
         result = await self.session.execute(statement)
         return result.scalars().first()
 
@@ -35,3 +41,8 @@ class MilestoneRepository:
         await self.session.commit()
         await self.session.refresh(milestone)
         return milestone
+
+    async def delete(self, milestone: Milestone) -> None:
+        milestone.deleted_at = datetime.now(timezone.utc)
+        self.session.add(milestone)
+        await self.session.commit()
