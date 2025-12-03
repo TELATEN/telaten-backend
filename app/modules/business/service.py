@@ -1,4 +1,5 @@
 from uuid import UUID
+from typing import AsyncGenerator
 from fastapi import HTTPException, status
 from app.modules.business.models import (
     BusinessProfile,
@@ -8,7 +9,6 @@ from app.modules.business.models import (
 from app.modules.business.repository import BusinessRepository
 from app.modules.agent.service import AgentService
 from app.db.session import AsyncSessionLocal
-from app.core.redis import RedisClient
 import json
 
 
@@ -50,26 +50,24 @@ class BusinessService:
 
         return await self.repo.update(profile)
 
-    async def generate_milestones_background(self, user_id: UUID, business_id: UUID):
+    async def generate_milestones_stream(
+        self, user_id: UUID, business_id: UUID
+    ) -> AsyncGenerator[str, None]:
         """
-        Background task delegates to AgentService.
+        Generator that yields SSE events for milestone generation.
         """
-        redis = RedisClient.get_instance()
-        channel = f"events:{user_id}"
 
-        # Helper to publish event
-        async def publish_event(
-            event_type: str, message: str, data: dict | None = None
-        ):
+        def format_sse(event_type: str, message: str, data: dict | None = None) -> str:
             payload = json.dumps({"type": event_type, "message": message, "data": data})
-            await redis.publish(channel, payload)
+            return f"data: {payload}\n\n"
 
         try:
+            # 1. Get Business Profile Data
             async with AsyncSessionLocal() as session:
                 repo = BusinessRepository(session)
                 profile = await repo.get_by_id(business_id)
                 if not profile:
-                    await publish_event("error", "Business profile not found.")
+                    yield format_sse("error", "Business profile not found.")
                     return
 
                 business_data = {
@@ -84,10 +82,11 @@ class BusinessService:
 
             # 2. Call Agent Service
             agent_service = AgentService()
-            await agent_service.run_onboarding_workflow(
-                user_id, business_id, business_data
-            )
+            async for event in agent_service.run_onboarding_workflow(
+                business_id, business_data
+            ):
+                yield event
 
         except Exception as e:
-            print(f"Error in background task: {e}")
-            await publish_event("error", f"Background task failed: {str(e)}")
+            print(f"Error in streaming task: {e}")
+            yield format_sse("error", f"Streaming task failed: {str(e)}")
