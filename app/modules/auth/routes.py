@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, Response, Cookie, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
-from app.modules.auth.models import UserCreate, UserRead, UserLogin
+from app.modules.auth.dependencies import get_current_user
+from app.modules.auth.models import User, UserCreate, UserRead, UserLogin
 from app.modules.auth.repository import AuthRepository
 from app.modules.auth.service import AuthService
 
@@ -11,6 +12,11 @@ router = APIRouter()
 def get_auth_service(db: AsyncSession = Depends(get_db)) -> AuthService:
     repo = AuthRepository(db)
     return AuthService(repo)
+
+
+@router.get("/me", response_model=UserRead)
+async def read_users_me(current_user: User = Depends(get_current_user)):
+    return current_user
 
 
 @router.post("/register", response_model=UserRead)
@@ -26,7 +32,9 @@ async def login(
     response: Response,
     service: AuthService = Depends(get_auth_service),
 ):
-    return await service.authenticate_user(login_data.email, login_data.password, response)
+    return await service.authenticate_user(
+        login_data.email, login_data.password, response
+    )
 
 
 @router.post("/refresh")
