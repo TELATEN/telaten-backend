@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List, Sequence
+from typing import Sequence
 from app.db.session import get_db
 from app.modules.milestone.models import MilestoneRead
 from app.modules.milestone.repository import MilestoneRepository

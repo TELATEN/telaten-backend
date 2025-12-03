@@ -1,10 +1,17 @@
 from fastapi import APIRouter, Depends, Response, Cookie, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
-from app.modules.auth.dependencies import get_current_user
-from app.modules.auth.models import User, UserCreate, UserRead, UserLogin
+from app.modules.auth.dependencies import get_current_business, get_current_user
+from app.modules.auth.models import (
+    User,
+    UserCreate,
+    UserRead,
+    UserLogin,
+    UserWithBusinessRead,
+)
 from app.modules.auth.repository import AuthRepository
 from app.modules.auth.service import AuthService
+from app.modules.business.models import BusinessProfile, BusinessProfileRead
 
 router = APIRouter()
 
@@ -14,9 +21,16 @@ def get_auth_service(db: AsyncSession = Depends(get_db)) -> AuthService:
     return AuthService(repo)
 
 
-@router.get("/me", response_model=UserRead)
-async def read_users_me(current_user: User = Depends(get_current_user)):
-    return current_user
+@router.get("/me", response_model=UserWithBusinessRead)
+async def read_users_me(
+    current_user: User = Depends(get_current_user),
+    current_business: BusinessProfile = Depends(get_current_business),
+):
+    business_read = None
+    if current_business:
+        business_read = BusinessProfileRead.model_validate(current_business)
+
+    return UserWithBusinessRead(**current_user.model_dump(), business=business_read)
 
 
 @router.post("/register", response_model=UserRead)
@@ -39,7 +53,6 @@ async def login(
 
 @router.post("/refresh")
 async def refresh_token(
-    response: Response,
     refresh_token: str | None = Cookie(default=None, alias="refresh_token"),
     service: AuthService = Depends(get_auth_service),
 ):

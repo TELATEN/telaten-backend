@@ -1,8 +1,9 @@
 from sqlmodel import SQLModel, Field
 from uuid import UUID, uuid4
 from datetime import datetime, timezone
-from typing import Optional
 from sqlalchemy import Column, DateTime
+from typing import Optional
+from app.modules.business.models import BusinessProfileRead
 
 
 class UserBase(SQLModel):
@@ -45,3 +46,7 @@ class UserLogin(SQLModel):
 class UserRead(UserBase):
     id: UUID
     created_at: datetime
+
+
+class UserWithBusinessRead(UserRead):
+    business: Optional[BusinessProfileRead] = None
