@@ -17,25 +17,33 @@ class TransactionBase(SQLModel):
 
 
 class Transaction(TransactionBase, table=True):
-    __tablename__ = "transactions"
+    __tablename__ = "transactions"  # type: ignore
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     business_id: UUID = Field(foreign_key="business_profiles.id", index=True)
-    
+
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         sa_column=Column(DateTime(timezone=True), nullable=False),
     )
 
 
-class TransactionCreate(TransactionBase):
-    pass
-
-
 class TransactionRead(TransactionBase):
     id: UUID
     business_id: UUID
     created_at: datetime
+
+
+class TransactionPagination(SQLModel):
+    items: list[TransactionRead]
+    total: int
+    page: int
+    size: int
+    pages: int
+
+
+class TransactionCreate(TransactionBase):
+    pass
 
 
 class FinancialSummary(SQLModel):

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List, Optional
+from typing import Optional
 from datetime import datetime
 from uuid import UUID
 from app.db.session import get_db
@@ -11,6 +11,7 @@ from app.modules.finance.models import (
     TransactionCreate,
     TransactionRead,
     FinancialSummary,
+    TransactionPagination,
 )
 from app.modules.finance.repository import FinanceRepository
 from app.modules.finance.service import FinanceService
@@ -47,10 +48,12 @@ async def create_transaction(
     return await service.create_transaction(business.id, transaction_in)
 
 
-@router.get("/transactions", response_model=List[TransactionRead])
+@router.get("/transactions", response_model=TransactionPagination)
 async def get_transactions(
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
+    page: int = 1,
+    size: int = 20,
     service: FinanceService = Depends(get_service),
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
@@ -63,7 +66,7 @@ async def get_transactions(
             detail="Business profile not found",
         )
 
-    return await service.get_transactions(business.id, start_date, end_date)
+    return await service.get_transactions(business.id, start_date, end_date, page, size)
 
 
 @router.get("/summary", response_model=FinancialSummary)

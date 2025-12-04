@@ -1,11 +1,18 @@
 from uuid import UUID
-from typing import Sequence, Optional
+from typing import Optional
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from app.modules.finance.repository import FinanceRepository
-from app.modules.finance.models import Transaction, TransactionCreate, FinancialSummary
+from app.modules.finance.models import (
+    Transaction,
+    TransactionCreate,
+    TransactionRead,
+    FinancialSummary,
+    TransactionPagination,
+)
 from app.modules.business.repository import BusinessRepository
 from app.modules.gamification.service import GamificationService
+import math
 
 
 class FinanceService:
@@ -47,8 +54,23 @@ class FinanceService:
         business_id: UUID,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
-    ) -> Sequence[Transaction]:
-        return await self.repo.get_by_business_id(business_id, start_date, end_date)
+        page: int = 1,
+        size: int = 20,
+    ) -> TransactionPagination:
+        skip = (page - 1) * size
+        items, total = await self.repo.get_by_business_id(
+            business_id, start_date, end_date, skip, size
+        )
+
+        pages = math.ceil(total / size) if size > 0 else 0
+
+        return TransactionPagination(
+            items=[TransactionRead.model_validate(t) for t in items],
+            total=total,
+            page=page,
+            size=size,
+            pages=pages,
+        )
 
     async def get_summary(
         self, business_id: UUID, period: str = "month"  # "week", "month", "year", "all"
@@ -64,8 +86,9 @@ class FinanceService:
         elif period == "year":
             start_date = now - relativedelta(years=1)
 
-        transactions = await self.repo.get_by_business_id(
-            business_id, start_date, end_date
+        # For summary we need all transactions within period, so using large limit
+        transactions, _ = await self.repo.get_by_business_id(
+            business_id, start_date, end_date, skip=0, limit=10000
         )
 
         total_income = sum(t.amount for t in transactions if t.type == "INCOME")

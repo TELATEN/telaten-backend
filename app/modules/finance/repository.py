@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select, desc
+from sqlmodel import select, desc, func
 from uuid import UUID
 from typing import Sequence, Optional
 from datetime import datetime
@@ -21,7 +21,9 @@ class FinanceRepository:
         business_id: UUID,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
-    ) -> Sequence[Transaction]:
+        skip: int = 0,
+        limit: int = 100,
+    ) -> tuple[Sequence[Transaction], int]:
         statement = (
             select(Transaction)
             .where(Transaction.business_id == business_id)
@@ -33,8 +35,16 @@ class FinanceRepository:
         if end_date:
             statement = statement.where(Transaction.transaction_date <= end_date)
 
+        # Get total count
+        count_statement = select(func.count()).select_from(statement.subquery())
+        count_result = await self.session.execute(count_statement)
+        total = count_result.scalar_one()
+
+        # Apply pagination
+        statement = statement.offset(skip).limit(limit)
         result = await self.session.execute(statement)
-        return result.scalars().all()
+        
+        return result.scalars().all(), total
 
     async def get_by_id(self, transaction_id: UUID) -> Transaction | None:
         result = await self.session.get(Transaction, transaction_id)
