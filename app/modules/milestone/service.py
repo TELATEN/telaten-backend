@@ -20,15 +20,14 @@ class MilestoneService:
 
     async def _award_points(self, business_id: UUID, points: int) -> None:
         if points > 0:
-            business = await self.business_repo.get_by_id(business_id)
-            if business:
-                business.total_points += points
-                await self.business_repo.update(business)
+            new_total = await self.business_repo.add_points(business_id, points)
 
-                # Check for achievements if gamification service is available
-                if self.gamification_service:
+            # Check for achievements if gamification service is available
+            if self.gamification_service and new_total > 0:
+                business = await self.business_repo.get_by_id(business_id)
+                if business:
                     await self.gamification_service.process_gamification(
-                        business.id, business.user_id, business.total_points
+                        business.id, business.user_id, new_total
                     )
 
     async def get_business_milestones(self, business_id: UUID) -> Sequence[Milestone]:

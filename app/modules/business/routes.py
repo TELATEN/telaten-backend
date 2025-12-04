@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from typing import List
+from app.core.utils import format_sse
 from app.modules.business.models import (
     BusinessProfileRead,
     BusinessProfileCreate,
@@ -12,7 +13,6 @@ from app.modules.business.service import BusinessService
 from app.modules.business.dependencies import get_business_service, get_business_repo
 from app.modules.auth.dependencies import get_current_user
 from app.modules.auth.models import User
-import json
 
 router = APIRouter()
 
@@ -28,7 +28,7 @@ async def create_business_profile(
 
     async def combined_generator():
         profile_data = profile.model_dump(mode="json")
-        yield f"data: {json.dumps({'type': 'profile_created', 'data': profile_data})}\n\n"
+        yield format_sse("profile_created", "Profile has been created", profile_data)
 
         async for event in service.generate_milestones_stream(
             current_user.id, profile.id

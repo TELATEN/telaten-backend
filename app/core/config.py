@@ -20,13 +20,6 @@ class Settings(BaseSettings):
     LLM_BASE_URL: Optional[str] = None
     LLM_MODEL_NAME: str
 
-    # Storage (Cloudflare R2)
-    R2_ACCOUNT_ID: Optional[str] = None
-    R2_ACCESS_KEY_ID: str
-    R2_SECRET_ACCESS_KEY: str
-    R2_BUCKET_NAME: str
-    R2_ENDPOINT_URL: str
-
     # Logging
     LOG_LEVEL: str = "INFO"
     ENV: str = "development"

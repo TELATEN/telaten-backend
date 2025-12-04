@@ -29,13 +29,15 @@ class FinanceService:
 
         if self.gamification_service:
             # Simple logic: 5 points per transaction for being diligent ("Telaten")
+            points_to_award = 5
+            new_total = await self.business_repo.add_points(
+                business_id, points_to_award
+            )
+
             business = await self.business_repo.get_by_id(business_id)
             if business:
-                points_to_award = 5
-                business.total_points += points_to_award
-                await self.business_repo.update(business)
                 await self.gamification_service.process_gamification(
-                    business.id, business.user_id, business.total_points
+                    business.id, business.user_id, new_total
                 )
 
         return transaction
