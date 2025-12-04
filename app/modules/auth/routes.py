@@ -1,7 +1,11 @@
 from fastapi import APIRouter, Depends, Response, Cookie, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
-from app.modules.auth.dependencies import get_current_business, get_current_user
+from app.modules.auth.dependencies import (
+    get_current_business,
+    get_current_user,
+    get_optional_current_business,
+)
 from app.modules.auth.models import (
     User,
     UserCreate,
@@ -24,8 +28,14 @@ def get_auth_service(db: AsyncSession = Depends(get_db)) -> AuthService:
 @router.get("/me", response_model=UserWithBusinessRead)
 async def read_users_me(
     current_user: User = Depends(get_current_user),
-    current_business: BusinessProfile = Depends(get_current_business),
+    current_business: BusinessProfile | None = Depends(get_optional_current_business),
 ):
+    if not current_business and current_user.role == "user":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User does not have a business profile. Please create one first.",
+        )
+
     business_read = None
     if current_business:
         business_read = BusinessProfileRead.model_validate(current_business)

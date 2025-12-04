@@ -16,15 +16,22 @@ class ChatRepository:
         return session_data
 
     async def get_session(self, session_id: UUID) -> ChatSession | None:
-        statement = select(ChatSession).where(ChatSession.id == session_id)
+        statement = (
+            select(ChatSession)
+            .where(ChatSession.id == session_id)
+            .where(ChatSession.deleted_at == None)
+        )
         result = await self.session.execute(statement)
         return result.scalars().first()
 
-    async def get_sessions_by_business(self, business_id: UUID) -> Sequence[ChatSession]:
+    async def get_sessions_by_business(
+        self, business_id: UUID
+    ) -> Sequence[ChatSession]:
         statement = (
             select(ChatSession)
             .where(ChatSession.business_id == business_id)
-            .order_by(ChatSession.created_at.desc()) # type: ignore
+            .where(ChatSession.deleted_at == None)
+            .order_by(ChatSession.created_at.desc())  # type: ignore
         )
         result = await self.session.execute(statement)
         return result.scalars().all()
@@ -46,3 +53,9 @@ class ChatRepository:
         )
         result = await self.session.execute(statement)
         return result.scalars().all()
+
+    async def delete_session(self, session: ChatSession) -> None:
+        from datetime import datetime, timezone
+        session.deleted_at = datetime.now(timezone.utc)
+        self.session.add(session)
+        await self.session.commit()

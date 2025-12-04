@@ -1,25 +1,20 @@
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.db.session import get_db
+from typing import List
 from app.modules.business.models import (
     BusinessProfileRead,
     BusinessProfileCreate,
     BusinessProfileUpdate,
+    BusinessLevelRead,
 )
 from app.modules.business.repository import BusinessRepository
 from app.modules.business.service import BusinessService
+from app.modules.business.dependencies import get_business_service, get_business_repo
 from app.modules.auth.dependencies import get_current_user
 from app.modules.auth.models import User
 import json
 
 router = APIRouter()
-
-
-# Dependency to get BusinessService
-def get_business_service(db: AsyncSession = Depends(get_db)) -> BusinessService:
-    repo = BusinessRepository(db)
-    return BusinessService(repo)
 
 
 @router.post("/profile")
@@ -60,3 +55,11 @@ async def update_business_profile(
 ):
     """Update the business profile of the current user."""
     return await service.update_profile(current_user.id, profile_in)
+
+
+@router.get("/levels", response_model=List[BusinessLevelRead])
+async def get_levels_user(
+    repo: BusinessRepository = Depends(get_business_repo),
+):
+    """List all available business levels (User)."""
+    return await repo.get_levels()

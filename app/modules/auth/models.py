@@ -9,6 +9,7 @@ from app.modules.business.models import BusinessProfileRead
 class UserBase(SQLModel):
     email: str = Field(unique=True, index=True)
     name: Optional[str] = None
+    role: str = Field(default="user")
 
 
 class User(UserBase, table=True):

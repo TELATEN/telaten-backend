@@ -40,16 +40,20 @@ async def get_current_user(
     return user
 
 
-async def get_current_business(
+async def get_optional_current_business(
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
-) -> BusinessProfile:
+) -> BusinessProfile | None:
     repo = BusinessRepository(db)
-    business = await repo.get_by_user_id(current_user.id)
+    return await repo.get_by_user_id(current_user.id)
 
-    if not business:
+
+async def get_current_business(
+    current_business: BusinessProfile | None = Depends(get_optional_current_business),
+) -> BusinessProfile:
+    if not current_business:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User does not have a business profile. Please create one first.",
         )
 
-    return business
+    return current_business

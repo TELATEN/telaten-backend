@@ -48,7 +48,7 @@ class ChatService:
         session = await self.repo.get_session(session_id)
         if not session:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Session Id not found"
             )
 
         # 2. Verify Business Ownership (indirectly verifies session ownership)
@@ -62,17 +62,30 @@ class ChatService:
         # 3. Fetch Messages
         return await self.repo.get_history(session_id, limit=100)
 
+    async def delete_session(self, user_id: UUID, session_id: UUID) -> None:
+        # 1. Verify Session
+        session = await self.repo.get_session(session_id)
+        if not session:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+            )
+
+        # 2. Verify Ownership
+        profile = await self.business_repo.get_by_id(session.business_id)
+        if not profile or profile.user_id != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to delete this session",
+            )
+        # 3. Delete
+        await self.repo.delete_session(session)
+
     async def stream_chat_completion(
         self, user_id: UUID, business_id: UUID, message_in: ChatMessageCreate
     ) -> AsyncGenerator[str, None]:
 
         session_id = message_in.session_id
 
-        # 0. Verify Business Ownership (Double check, though route already checked business ownership via dependency if injected,
-        # but here we receive business_id explicitly so we should re-verify or assume caller verified).
-        # Since we updated route to use `get_current_business`, business_id passed here IS the user's business.
-        # But let's keep it safe.
-        
         profile = await self.business_repo.get_by_id(business_id)
         if not profile:
             yield format_sse("error", "Business profile not found")
@@ -84,13 +97,14 @@ class ChatService:
 
         # Handle Session Creation
         if not session_id:
-            new_session = ChatSession(business_id=business_id, title="New Conversation")
+            session_title = " ".join(message_in.content.split(" ")[:4])
+            new_session = ChatSession(business_id=business_id, title=session_title)
             session = await self.repo.create_session(new_session)
             session_id = session.id
             yield format_sse(
                 "session_created",
-                "New chat session created",
-                {"session_id": str(session_id)},
+                session_title,
+                str(session_id),
             )
         else:
             session = await self.repo.get_session(session_id)
@@ -168,12 +182,6 @@ class ChatService:
                 content=full_response_text,
             )
             await self.repo.create_message(assistant_msg)
-
-            yield format_sse(
-                "done",
-                None,
-                {"full_text": full_response_text, "session_id": str(session_id)},
-            )
 
         except Exception as e:
             logger.error(f"Chat Error: {e}")

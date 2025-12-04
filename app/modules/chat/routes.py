@@ -45,6 +45,17 @@ async def get_chat_messages(
     return await service.get_session_messages(current_user.id, session_id)
 
 
+@router.delete("/sessions/{session_id}")
+async def delete_chat_session(
+    session_id: UUID,
+    current_user: User = Depends(get_current_user),
+    service: ChatService = Depends(get_chat_service),
+):
+    """Delete a chat session."""
+    await service.delete_session(current_user.id, session_id)
+    return {"message": "Session deleted successfully"}
+
+
 @router.post("/completion")
 async def chat_completion(
     message: ChatMessageCreate,

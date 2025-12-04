@@ -1,7 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
+from sqlmodel import select, asc, desc
 from uuid import UUID
-from app.modules.business.models import BusinessProfile
+from typing import Sequence
+from app.modules.business.models import BusinessProfile, BusinessLevel
 
 
 class BusinessRepository:
@@ -29,3 +30,52 @@ class BusinessRepository:
         await self.session.commit()
         await self.session.refresh(profile)
         return profile
+
+    async def add_points(self, business_id: UUID, points: int) -> int:
+        profile = await self.get_by_id(business_id)
+        if profile:
+            current = profile.total_points or 0
+            profile.total_points = current + points
+            self.session.add(profile)
+            await self.session.commit()
+            await self.session.refresh(profile)
+            return profile.total_points
+        return 0
+
+    # --- Business Level Methods ---
+
+    async def get_levels(self) -> Sequence[BusinessLevel]:
+        stmt = select(BusinessLevel).order_by(asc(BusinessLevel.required_points))
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
+
+    async def get_level(self, level_id: UUID) -> BusinessLevel | None:
+        result = await self.session.get(BusinessLevel, level_id)
+        return result
+
+    async def create_level(self, level: BusinessLevel) -> BusinessLevel:
+        self.session.add(level)
+        await self.session.commit()
+        await self.session.refresh(level)
+        return level
+
+    async def update_level(self, level: BusinessLevel) -> BusinessLevel:
+        self.session.add(level)
+        await self.session.commit()
+        await self.session.refresh(level)
+        return level
+
+    async def delete_level(self, level: BusinessLevel) -> None:
+        await self.session.delete(level)
+        await self.session.commit()
+
+    async def get_level_by_points(self, points: int) -> BusinessLevel | None:
+        # Find the highest level where required_points <= points
+        stmt = (
+            select(BusinessLevel)
+            .where(BusinessLevel.required_points <= points)
+            .order_by(desc(BusinessLevel.required_points))
+            .limit(1)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalars().first()

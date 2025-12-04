@@ -64,6 +64,7 @@ class AuthService:
             "user": {
                 "name": user.name,
                 "email": user.email,
+                "role": user.role,
                 "created_at": user.created_at,
             },
         }

@@ -1,7 +1,6 @@
 from uuid import UUID
 from typing import AsyncGenerator
 import structlog
-from app.core.logging import setup_logging
 from app.core.utils import format_sse
 from app.modules.agent.workflow import get_onboarding_workflow
 from llama_index.core.agent.workflow import (
@@ -10,7 +9,6 @@ from llama_index.core.agent.workflow import (
     ToolCallResult,
 )
 
-setup_logging()
 logger = structlog.get_logger()
 
 

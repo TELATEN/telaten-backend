@@ -22,6 +22,7 @@ class BusinessProfileBase(SQLModel):
     primary_goal: Optional[str] = Field(
         default=None, description="e.g. Increase Sales, Brand Awareness, New Branch"
     )
+    total_points: int = Field(default=0)
 
 
 class BusinessProfile(BusinessProfileBase, table=True):
@@ -29,6 +30,9 @@ class BusinessProfile(BusinessProfileBase, table=True):
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     user_id: UUID = Field(foreign_key="users.id", unique=True, index=True)
+
+    level_id: Optional[UUID] = Field(default=None, foreign_key="business_levels.id")
+
     milestones: List["Milestone"] = Relationship(back_populates="business_profile")
 
     created_at: datetime = Field(
@@ -58,6 +62,8 @@ class BusinessProfileRead(BusinessProfileBase):
     user_id: UUID
     created_at: datetime
     updated_at: datetime
+    level_id: Optional[UUID] = None
+    level_name: Optional[str] = None
 
 
 class BusinessProfileUpdate(SQLModel):
@@ -68,3 +74,37 @@ class BusinessProfileUpdate(SQLModel):
     business_stage: Optional[str] = None
     target_market: Optional[str] = None
     primary_goal: Optional[str] = None
+    total_points: Optional[int] = None
+
+
+class BusinessLevelBase(SQLModel):
+    name: str = Field(index=True)
+    required_points: int = Field(index=True)
+    order: int = Field(default=0)
+    icon: Optional[str] = None
+
+
+class BusinessLevel(BusinessLevelBase, table=True):
+    __tablename__ = "business_levels"  # type: ignore
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
+
+
+class BusinessLevelCreate(BusinessLevelBase):
+    pass
+
+
+class BusinessLevelRead(BusinessLevelBase):
+    id: UUID
+    created_at: datetime
+
+
+class BusinessLevelUpdate(SQLModel):
+    name: Optional[str] = None
+    required_points: Optional[int] = None
+    order: Optional[int] = None
+    icon: Optional[str] = None

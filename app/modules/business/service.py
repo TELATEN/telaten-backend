@@ -9,7 +9,10 @@ from app.modules.business.models import (
 from app.modules.business.repository import BusinessRepository
 from app.modules.agent.service import AgentService
 from app.db.session import AsyncSessionLocal
+import structlog
 from app.core.utils import format_sse
+
+logger = structlog.get_logger()
 
 
 class BusinessService:
@@ -50,6 +53,9 @@ class BusinessService:
 
         return await self.repo.update(profile)
 
+    async def add_points(self, business_id: UUID, points: int) -> int:
+        return await self.repo.add_points(business_id, points)
+
     async def generate_milestones_stream(
         self, user_id: UUID, business_id: UUID
     ) -> AsyncGenerator[str, None]:
@@ -79,7 +85,6 @@ class BusinessService:
                     "address": profile.address,
                 }
 
-            # 2. Call Agent Service
             agent_service = AgentService()
             async for event in agent_service.run_onboarding_workflow(
                 business_id, business_data
@@ -87,5 +92,5 @@ class BusinessService:
                 yield event
 
         except Exception as e:
-            print(f"Error in streaming task: {e}")
+            logger.error(f"Error in streaming task: {e}")
             yield format_sse("error", f"Streaming task failed: {str(e)}")
