@@ -1,4 +1,5 @@
 from uuid import UUID
+from datetime import datetime
 from typing import List
 from app.modules.milestone.models import Milestone, MilestoneTask
 from app.modules.milestone.repository import MilestoneRepository
@@ -58,7 +59,7 @@ async def create_milestone_tool(
 
 
 async def list_milestones_tool(
-    business_id: str, page: int = 1, size: int = 8
+    business_id: str, page: int = 1, size: int = 8, status: str = "in_progress"
 ) -> str:
     """
     Lists all milestones and their tasks for a specific business.
@@ -67,12 +68,20 @@ async def list_milestones_tool(
         business_id: The UUID of the business.
         page: Page number (default 1).
         size: Number of milestones per page (default 8).
+        status: Filter by status. Default is 'in_progress'. Use 'active' for (pending + in_progress), or 'all' for everything.
     """
     try:
         async with AsyncSessionLocal() as session:
             repo = MilestoneRepository(session)
+
+            status_filter = None
+            if status == "active":
+                status_filter = ["pending", "in_progress"]
+            elif status and status.lower() != "all":
+                status_filter = status
+
             milestones = await repo.get_by_business_id(
-                UUID(business_id), page=page, size=size
+                UUID(business_id), page=page, size=size, status=status_filter
             )
 
             if not milestones:
@@ -272,6 +281,7 @@ async def record_transaction_tool(
     description: str = "",
     category_id: str | None = None,
     payment_method: str = "CASH",
+    transaction_date: str | None = None,
 ) -> str:
     """
     Records a financial transaction (Income or Expense).
@@ -284,6 +294,7 @@ async def record_transaction_tool(
         description: Brief description.
         category_id: UUID of the category (optional but recommended).
         payment_method: 'CASH', 'TRANSFER', 'QRIS', etc.
+        transaction_date: ISO date string (e.g., '2023-12-25'). Defaults to now.
     """
     try:
         async with AsyncSessionLocal() as session:
@@ -294,6 +305,13 @@ async def record_transaction_tool(
             service = FinanceService(repo, business_repo, gamification_service)
 
             cat_uuid = UUID(category_id) if category_id else None
+            
+            t_date = None
+            if transaction_date:
+                try:
+                    t_date = datetime.fromisoformat(transaction_date)
+                except ValueError:
+                    return "Error: Invalid date format. Use ISO format (YYYY-MM-DD)."
 
             transaction_in = TransactionCreate(
                 amount=amount,
@@ -302,6 +320,7 @@ async def record_transaction_tool(
                 category_id=cat_uuid,
                 description=description,
                 payment_method=payment_method,
+                transaction_date=t_date,
             )
 
             transaction = await service.create_transaction(

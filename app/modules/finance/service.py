@@ -45,6 +45,11 @@ class FinanceService:
                 )
 
         data = transaction_in.model_dump()
+
+        # Ensure transaction_date is not None if not provided
+        if data.get("transaction_date") is None:
+            del data["transaction_date"]
+
         # Populate derived fields
         data["category"] = category_name
 

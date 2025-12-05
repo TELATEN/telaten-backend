@@ -25,14 +25,27 @@ class MilestoneRepository:
         return task
 
     async def get_by_business_id(
-        self, business_id: UUID, page: int = 1, size: int = 100
+        self,
+        business_id: UUID,
+        page: int = 1,
+        size: int = 100,
+        status: str | Sequence[str] | None = None,
     ) -> Sequence[Milestone]:
         offset = (page - 1) * size
         statement = (
             select(Milestone)
             .where(Milestone.business_id == business_id)
             .where(Milestone.deleted_at == None)
-            .order_by(Milestone.order)  # type: ignore
+        )
+
+        if status:
+            if isinstance(status, str):
+                statement = statement.where(Milestone.status == status)
+            else:
+                statement = statement.where(Milestone.status.in_(status))  # type: ignore
+
+        statement = (
+            statement.order_by(Milestone.order)  # type: ignore
             .offset(offset)
             .limit(size)
         )
