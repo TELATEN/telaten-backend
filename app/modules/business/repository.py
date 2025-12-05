@@ -1,8 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select, asc, desc
+from sqlmodel import select, asc, desc, func
 from uuid import UUID
 from typing import Sequence
 from app.modules.business.models import BusinessProfile, BusinessLevel
+from app.modules.auth.models import User
 
 
 class BusinessRepository:
@@ -79,3 +80,27 @@ class BusinessRepository:
         )
         result = await self.session.execute(stmt)
         return result.scalars().first()
+
+    async def get_top_businesses(
+        self, limit: int = 10
+    ) -> Sequence[tuple[BusinessProfile, User]]:
+        # Join with User to get user details
+        stmt = (
+            select(BusinessProfile, User)
+            .join(User, BusinessProfile.user_id == User.id)  # type: ignore
+            .where(BusinessProfile.deleted_at == None)
+            .order_by(desc(BusinessProfile.total_points))
+            .limit(limit)
+        )
+        result = await self.session.execute(stmt)
+        return result.all()  # type: ignore
+
+    async def calculate_rank(self, points: int) -> int:
+        stmt = (
+            select(func.count())
+            .select_from(BusinessProfile)
+            .where(BusinessProfile.deleted_at == None)
+            .where(BusinessProfile.total_points > points)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one() + 1

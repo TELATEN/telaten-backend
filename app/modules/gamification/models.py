@@ -50,3 +50,15 @@ class AchievementUpdate(SQLModel):
     description: Optional[str] = None
     required_points: Optional[int] = None
     badge_icon: Optional[str] = None
+
+
+class LeaderboardEntry(SQLModel):
+    rank: int
+    business_id: UUID
+    business_name: str
+    total_points: int
+    level_name: Optional[str] = None
+    achievements_count: int = 0
+    user_id: UUID
+    user_name: str
+    is_current_user: bool = False

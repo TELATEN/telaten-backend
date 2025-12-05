@@ -1,8 +1,9 @@
 from uuid import UUID
-from typing import List
+from typing import List, Optional
 from app.modules.gamification.repository import GamificationRepository
+from app.modules.gamification.models import LeaderboardEntry
 from app.modules.business.repository import BusinessRepository
-
+from app.modules.auth.models import User
 
 
 class GamificationService:
@@ -47,3 +48,75 @@ class GamificationService:
                 newly_unlocked.append(ach.title)
 
         return newly_unlocked
+
+    async def get_leaderboard(
+        self, limit: int = 10, current_user: Optional[User] = None
+    ) -> List[LeaderboardEntry]:
+        """
+        Retrieves the leaderboard of top businesses.
+        """
+        top_businesses = await self.business_repo.get_top_businesses(limit)
+
+        leaderboard = []
+        for rank, (business, user) in enumerate(top_businesses, start=1):
+            # Fetch level name
+            level_name = None
+            if business.level_id:
+                level = await self.business_repo.get_level(business.level_id)
+                if level:
+                    level_name = level.name
+
+            unlocked_ids = await self.repo.get_unlocked_achievement_ids(
+                business.user_id
+            )
+            achievements_count = len(unlocked_ids)
+
+            leaderboard.append(
+                LeaderboardEntry(
+                    rank=rank,
+                    business_id=business.id,
+                    business_name=business.business_name,
+                    total_points=business.total_points,
+                    level_name=level_name,
+                    achievements_count=achievements_count,
+                    user_id=user.id,
+                    user_name=user.name or "Unknown",
+                    is_current_user=(current_user is not None and user.id == current_user.id),
+                )
+            )
+
+        if current_user:
+            # Check if current user is already in leaderboard
+            if not any(entry.user_id == current_user.id for entry in leaderboard):
+                business = await self.business_repo.get_by_user_id(current_user.id)
+                if business and not business.deleted_at:
+                    rank = await self.business_repo.calculate_rank(
+                        business.total_points or 0
+                    )
+
+                    level_name = None
+                    if business.level_id:
+                        level = await self.business_repo.get_level(business.level_id)
+                        if level:
+                            level_name = level.name
+
+                    unlocked_ids = await self.repo.get_unlocked_achievement_ids(
+                        current_user.id
+                    )
+                    achievements_count = len(unlocked_ids)
+
+                    leaderboard.append(
+                        LeaderboardEntry(
+                            rank=rank,
+                            business_id=business.id,
+                            business_name=business.business_name,
+                            total_points=business.total_points or 0,
+                            level_name=level_name,
+                            achievements_count=achievements_count,
+                            user_id=current_user.id,
+                            user_name=current_user.name or "Unknown",
+                            is_current_user=True,
+                        )
+                    )
+
+        return leaderboard
