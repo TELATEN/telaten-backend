@@ -14,6 +14,9 @@ RUN uv sync --frozen --no-install-project
 # Final stage: runtime
 FROM python:3.12-alpine
 
+# Install Node.js and npm (provides npx) for MCP servers
+RUN apk add --no-cache nodejs npm
+
 # create non-root user
 RUN adduser -D appuser
 WORKDIR /app

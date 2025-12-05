@@ -7,5 +7,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    volumes:
+      - ./mcp.json:/app/mcp.json
     env_file:
       - .env
