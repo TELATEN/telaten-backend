@@ -1,4 +1,5 @@
 from uuid import UUID
+from datetime import datetime
 from typing import AsyncGenerator, Sequence
 from fastapi import HTTPException, status
 from app.core.utils import format_sse
@@ -7,6 +8,7 @@ from app.modules.chat.repository import ChatRepository
 from app.modules.chat.models import ChatMessage, ChatMessageCreate, ChatSession
 from app.modules.business.repository import BusinessRepository
 from app.modules.agent.workflow import get_chat_workflow
+from app.modules.auth.models import User
 from llama_index.core.llms import ChatMessage as LLChatMessage, MessageRole
 from llama_index.core.agent.workflow import (
     ToolCall,
@@ -133,16 +135,25 @@ class ChatService:
         ]
         ai_memory = profile.ai_context or {}
 
+        # Fetch User to get name
+        user_obj = await self.business_repo.session.get(User, user_id)
+        user_name = user_obj.name if user_obj else "N/A"
+        current_date = datetime.now().strftime("%A, %d %B %Y")
+
         context_str = f"""
             CONTEXT:
             Business Name: {profile.business_name}
             Category: {profile.business_category}
             Stage: {profile.business_stage}
             ID: {str(business_id)}
+
+            User Name: {user_name}
+            Current Date: {current_date}
             """
 
         workflow = get_chat_workflow(system_prompt=context_str, initial_state=ai_memory)
         logger.debug(f"Starting Chat Workflow for session {session_id}")
+        logger.debug(f"User Message: {message_in.content}")
         try:
             handler = workflow.run(
                 user_msg=message_in.content, chat_history=chat_history[:-1]
@@ -154,7 +165,7 @@ class ChatService:
                 if isinstance(event, AgentStream):
                     delta = event.delta
                     full_response_text += delta
-                    # print(delta, end="", flush=True)
+                    print(delta, end="", flush=True)
                     yield format_sse("token", None, {"text": delta})
 
                 elif isinstance(event, ToolCall):

@@ -83,11 +83,12 @@ class BusinessRepository:
 
     async def get_top_businesses(
         self, limit: int = 10
-    ) -> Sequence[tuple[BusinessProfile, User]]:
-        # Join with User to get user details
+    ) -> Sequence[tuple[BusinessProfile, User, BusinessLevel | None]]:
+        # Join with User to get user details and BusinessLevel for level name
         stmt = (
-            select(BusinessProfile, User)
+            select(BusinessProfile, User, BusinessLevel)
             .join(User, BusinessProfile.user_id == User.id)  # type: ignore
+            .join(BusinessLevel, BusinessProfile.level_id == BusinessLevel.id, isouter=True)  # type: ignore
             .where(BusinessProfile.deleted_at == None)
             .order_by(desc(BusinessProfile.total_points))
             .limit(limit)

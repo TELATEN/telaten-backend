@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
+from sqlmodel import select, func
 from uuid import UUID
 from typing import Sequence
 from app.modules.gamification.models import Achievement, UserAchievement
@@ -28,6 +28,13 @@ class GamificationRepository:
         )
         result = await self.session.execute(stmt)
         return result.scalars().all()
+
+    async def count_user_achievements(self, user_id: UUID) -> int:
+        stmt = select(func.count()).select_from(UserAchievement).where(
+            UserAchievement.user_id == user_id
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one()
 
     async def unlock_achievement(self, user_id: UUID, achievement_id: UUID):
         ua = UserAchievement(user_id=user_id, achievement_id=achievement_id)

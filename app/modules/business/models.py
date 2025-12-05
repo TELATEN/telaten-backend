@@ -22,7 +22,7 @@ class BusinessProfileBase(SQLModel):
     primary_goal: Optional[str] = Field(
         default=None, description="e.g. Increase Sales, Brand Awareness, New Branch"
     )
-    total_points: int = Field(default=0)
+    total_points: int = Field(default=0, index=True)
     ai_context: Optional[dict] = Field(
         default=None,
         sa_column=Column(JSON, default={}),

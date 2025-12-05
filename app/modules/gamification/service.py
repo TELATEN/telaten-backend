@@ -58,18 +58,13 @@ class GamificationService:
         top_businesses = await self.business_repo.get_top_businesses(limit)
 
         leaderboard = []
-        for rank, (business, user) in enumerate(top_businesses, start=1):
+        for rank, (business, user, level) in enumerate(top_businesses, start=1):
             # Fetch level name
-            level_name = None
-            if business.level_id:
-                level = await self.business_repo.get_level(business.level_id)
-                if level:
-                    level_name = level.name
+            level_name = level.name if level else None
 
-            unlocked_ids = await self.repo.get_unlocked_achievement_ids(
+            achievements_count = await self.repo.count_user_achievements(
                 business.user_id
             )
-            achievements_count = len(unlocked_ids)
 
             leaderboard.append(
                 LeaderboardEntry(
@@ -100,10 +95,9 @@ class GamificationService:
                         if level:
                             level_name = level.name
 
-                    unlocked_ids = await self.repo.get_unlocked_achievement_ids(
+                    achievements_count = await self.repo.count_user_achievements(
                         current_user.id
                     )
-                    achievements_count = len(unlocked_ids)
 
                     leaderboard.append(
                         LeaderboardEntry(
