@@ -19,6 +19,7 @@ from app.modules.milestone.service import MilestoneService
 from app.modules.business.repository import BusinessRepository
 from app.modules.gamification.repository import GamificationRepository
 from app.modules.gamification.service import GamificationService
+from app.modules.chat.repository import ChatRepository
 
 router = APIRouter()
 
@@ -27,8 +28,9 @@ def get_service(session: AsyncSession = Depends(get_db)) -> MilestoneService:
     repo = MilestoneRepository(session)
     business_repo = BusinessRepository(session)
     gamification_repo = GamificationRepository(session)
+    chat_repo = ChatRepository(session)
     gamification_service = GamificationService(gamification_repo, business_repo)
-    return MilestoneService(repo, business_repo, gamification_service)
+    return MilestoneService(repo, business_repo, gamification_service, chat_repo)
 
 
 @router.get("/", response_model=List[MilestoneListRead])
@@ -36,6 +38,8 @@ async def get_milestones(
     service: MilestoneService = Depends(get_service),
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
+    page: int = 1,
+    size: int = 100,
 ):
     business_repo = BusinessRepository(session)
     business = await business_repo.get_by_user_id(current_user.id)
@@ -44,7 +48,9 @@ async def get_milestones(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Business profile not found",
         )
-    return await service.get_business_milestones(business.id)
+    return await service.get_business_milestones(
+        business.id, page=page, size=size
+    )
 
 
 @router.post("/", response_model=List[MilestoneRead])

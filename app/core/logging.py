@@ -117,3 +117,6 @@ def setup_logging():
     logging.getLogger("llama_index_instrumentation.dispatcher").setLevel(
         logging.WARNING
     )
+
+
+logger = structlog.get_logger()

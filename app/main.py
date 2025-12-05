@@ -11,13 +11,8 @@ from app.modules.gamification.routes import router as gamification_router
 from app.modules.gamification.admin_routes import router as gamification_admin_router
 from app.modules.finance.routes import router as finance_router
 from app.db.session import init_db, AsyncSessionLocal
-from app.core.logging import setup_logging
+from app.core.logging import logger
 from app.db.init_data import init_admin_user
-import structlog
-
-# Setup logging as early as possible
-setup_logging()
-logger = structlog.get_logger()
 
 
 @asynccontextmanager
@@ -40,9 +35,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-origins = [settings.FRONTEND_URL]
-if settings.ENV == "development":
-    origins.append("*")
+origins = settings.FRONTEND_URL.split(",")
 
 app.add_middleware(
     CORSMiddleware,

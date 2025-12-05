@@ -1,8 +1,8 @@
 from uuid import UUID
 from typing import AsyncGenerator, Sequence
-import structlog
 from fastapi import HTTPException, status
 from app.core.utils import format_sse
+from app.core.logging import logger
 from app.modules.chat.repository import ChatRepository
 from app.modules.chat.models import ChatMessage, ChatMessageCreate, ChatSession
 from app.modules.business.repository import BusinessRepository
@@ -13,8 +13,6 @@ from llama_index.core.agent.workflow import (
     ToolCallResult,
     AgentStream,
 )
-
-logger = structlog.get_logger()
 
 
 class ChatService:
@@ -133,11 +131,9 @@ class ChatService:
             )
             for m in history_msgs
         ]
+        ai_memory = profile.ai_context or {}
 
-        workflow = get_chat_workflow()
-
-        try:
-            context_str = f"""
+        context_str = f"""
             CONTEXT:
             Business Name: {profile.business_name}
             Category: {profile.business_category}
@@ -145,10 +141,11 @@ class ChatService:
             ID: {str(business_id)}
             """
 
-            final_user_msg = f"{context_str}\n\nUser Query: {message_in.content}"
-
+        workflow = get_chat_workflow(system_prompt=context_str, initial_state=ai_memory)
+        logger.debug(f"Starting Chat Workflow for session {session_id}")
+        try:
             handler = workflow.run(
-                user_msg=final_user_msg, chat_history=chat_history[:-1]
+                user_msg=message_in.content, chat_history=chat_history[:-1]
             )
 
             full_response_text = ""
@@ -157,9 +154,13 @@ class ChatService:
                 if isinstance(event, AgentStream):
                     delta = event.delta
                     full_response_text += delta
+                    # print(delta, end="", flush=True)
                     yield format_sse("token", None, {"text": delta})
 
                 elif isinstance(event, ToolCall):
+                    logger.debug(
+                        f"Tool Call: {event.tool_name} with args {event.tool_kwargs}"
+                    )
                     yield format_sse(
                         "tool_start",
                         f"Calling tool: {event.tool_name}",
@@ -167,6 +168,9 @@ class ChatService:
                     )
 
                 elif isinstance(event, ToolCallResult):
+                    logger.debug(
+                        f"Tool Result: {event.tool_name} output {event.tool_output}"
+                    )
                     yield format_sse(
                         "tool_end",
                         f"Tool {event.tool_name} completed",

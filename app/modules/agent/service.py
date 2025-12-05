@@ -2,7 +2,7 @@ from uuid import UUID
 from typing import AsyncGenerator
 import structlog
 from app.core.utils import format_sse
-from app.modules.agent.workflow import get_onboarding_workflow
+from app.modules.agent.workflow import auto_generate_workflow
 from llama_index.core.agent.workflow import (
     AgentOutput,
     ToolCall,
@@ -20,13 +20,7 @@ class AgentService:
 
         try:
             yield format_sse("progress", "AI Agents initializing...", {"progress": 5})
-
-            workflow = get_onboarding_workflow()
-
-            user_msg = f"""
-            Please create a roadmap for this new business.
-            
-            Business ID: {str(business_id)} (IMPORTANT: Use this ID for tools)
+            system_prompt = f"""Business ID: {str(business_id)} (IMPORTANT: Use this ID for tools)
             
             Profile:
             - Name: {business_data['name']}
@@ -36,9 +30,14 @@ class AgentService:
             - Target Market: {business_data.get('target_market', 'Unknown')}
             - Goal: {business_data.get('primary_goal', 'Unknown')}
             - Address: {business_data.get('address', {})}
-            """
+              """
+
+            workflow = auto_generate_workflow(system_prompt)
+
+            user_msg = """Please create a roadmap for this new business."""
 
             handler = workflow.run(user_msg=user_msg)
+            logger.debug("[Onboarding Workflow] Agent Workflow started.")
 
             async for event in handler.stream_events():
                 if isinstance(event, AgentOutput):

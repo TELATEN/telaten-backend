@@ -5,28 +5,36 @@ from app.modules.business.models import (
     BusinessProfile,
     BusinessProfileCreate,
     BusinessProfileUpdate,
+    BusinessProfileRead,
 )
 from app.modules.business.repository import BusinessRepository
 from app.modules.agent.service import AgentService
 from app.db.session import AsyncSessionLocal
-import structlog
 from app.core.utils import format_sse
-
-logger = structlog.get_logger()
+from app.core.logging import logger
 
 
 class BusinessService:
     def __init__(self, repo: BusinessRepository):
         self.repo = repo
 
-    async def get_profile(self, user_id: UUID) -> BusinessProfile:
+    async def get_profile(self, user_id: UUID) -> BusinessProfileRead:
         profile = await self.repo.get_by_user_id(user_id)
         if not profile:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Business profile not found",
             )
-        return profile
+
+        level_name = None
+        if profile.level_id:
+            level = await self.repo.get_level(profile.level_id)
+            if level:
+                level_name = level.name
+
+        profile_read = BusinessProfileRead.model_validate(profile)
+        profile_read.level_name = level_name
+        return profile_read
 
     async def create_profile(
         self, user_id: UUID, profile_in: BusinessProfileCreate
@@ -45,7 +53,12 @@ class BusinessService:
     async def update_profile(
         self, user_id: UUID, profile_in: BusinessProfileUpdate
     ) -> BusinessProfile:
-        profile = await self.get_profile(user_id)
+        profile = await self.repo.get_by_user_id(user_id)
+        if not profile:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Business profile not found",
+            )
 
         update_data = profile_in.model_dump(exclude_unset=True)
         for key, value in update_data.items():

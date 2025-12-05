@@ -57,17 +57,23 @@ async def create_milestone_tool(
         return f"Error creating milestone: {str(e)}"
 
 
-async def list_milestones_tool(business_id: str) -> str:
+async def list_milestones_tool(
+    business_id: str, page: int = 1, size: int = 8
+) -> str:
     """
     Lists all milestones and their tasks for a specific business.
 
     Args:
         business_id: The UUID of the business.
+        page: Page number (default 1).
+        size: Number of milestones per page (default 8).
     """
     try:
         async with AsyncSessionLocal() as session:
             repo = MilestoneRepository(session)
-            milestones = await repo.get_by_business_id(UUID(business_id))
+            milestones = await repo.get_by_business_id(
+                UUID(business_id), page=page, size=size
+            )
 
             if not milestones:
                 return "No milestones found."
@@ -242,7 +248,7 @@ async def get_business_summary_tool(business_id: str) -> str:
 
             level_name = "N/A"
             if business.level_id:
-                level = await gamification_repo.get_level(business.level_id)
+                level = await business_repo.get_level(business.level_id)
                 if level:
                     level_name = level.name
 
@@ -319,3 +325,102 @@ async def get_financial_report_tool(business_id: str, period: str = "month") -> 
             )
     except Exception as e:
         return f"Error getting financial report: {str(e)}"
+
+
+async def update_business_context_tool(
+    business_id: str,
+    current_focus: str | None = None,
+    financial_health: str | None = None,
+    user_mood: str | None = None,
+    condition_update: str | None = None,
+    risk_factor: str | None = None,
+    remove_condition_index: int | None = None,
+    remove_risk_factor_index: int | None = None,
+    update_condition_index: int | None = None,
+    update_condition_text: str | None = None,
+) -> str:
+    """
+    Updates the AI's context memory about the business status.
+    USE THIS whenever the user reveals important changes or conditions.
+
+    Args:
+        business_id: The UUID of the business.
+        current_focus: E.g., "Marketing", "Product", "Finance".
+        financial_health: E.g., "Critical", "Stable", "Growing".
+        user_mood: E.g., "Optimistic", "Frustrated", "Burned out".
+        condition_update: A specific fact to ADD to the conditions list.
+        risk_factor: A risk to ADD.
+        remove_condition_index: Index of the condition to REMOVE (0-based).
+        remove_risk_factor_index: Index of the risk factor to REMOVE (0-based).
+        update_condition_index: Index of the condition to UPDATE.
+        update_condition_text: New text for the condition at that index.
+    """
+    try:
+        async with AsyncSessionLocal() as session:
+            repo = BusinessRepository(session)
+            business = await repo.get_by_id(UUID(business_id))
+
+            if not business:
+                return "Business not found."
+
+            # Initialize if empty
+            if not business.ai_context:
+                business.ai_context = {
+                    "conditions": [],
+                    "risk_factors": [],
+                }
+
+            context = business.ai_context
+
+            if current_focus:
+                context["current_focus"] = current_focus
+            if financial_health:
+                context["financial_health"] = financial_health
+            if user_mood:
+                context["user_mood"] = user_mood
+
+            # ADD Logic
+            if condition_update:
+                if "conditions" not in context:
+                    context["conditions"] = []
+                if condition_update not in context["conditions"]:
+                    context["conditions"].append(condition_update)
+
+            if risk_factor:
+                if "risk_factors" not in context:
+                    context["risk_factors"] = []
+                if risk_factor not in context["risk_factors"]:
+                    context["risk_factors"].append(risk_factor)
+
+            # UPDATE Logic for Conditions
+            if update_condition_index is not None and update_condition_text and "conditions" in context:
+                try:
+                    if 0 <= update_condition_index < len(context["conditions"]):
+                        context["conditions"][update_condition_index] = update_condition_text
+                except IndexError:
+                    pass
+
+            # REMOVE Logic (Index Based)
+            if remove_condition_index is not None and "conditions" in context:
+                try:
+                    # Check bounds
+                    if 0 <= remove_condition_index < len(context["conditions"]):
+                        removed = context["conditions"].pop(remove_condition_index)
+                except IndexError:
+                    pass # Ignore invalid index
+
+            if remove_risk_factor_index is not None and "risk_factors" in context:
+                try:
+                    if 0 <= remove_risk_factor_index < len(context["risk_factors"]):
+                        removed = context["risk_factors"].pop(remove_risk_factor_index)
+                except IndexError:
+                    pass
+
+            # Save back
+            business.ai_context = context
+            await repo.update(business)
+
+            return f"Success: Context updated. Focus: {context.get('current_focus', 'N/A')}"
+
+    except Exception as e:
+        return f"Error updating context: {str(e)}"

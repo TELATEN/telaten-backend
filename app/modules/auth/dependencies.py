@@ -1,3 +1,4 @@
+from uuid import UUID
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
@@ -30,7 +31,6 @@ async def get_current_user(
         raise credentials_exception
 
     repo = AuthRepository(db)
-    from uuid import UUID
 
     user = await repo.get_by_id(UUID(user_id))
 

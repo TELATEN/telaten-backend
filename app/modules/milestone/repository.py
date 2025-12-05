@@ -24,12 +24,17 @@ class MilestoneRepository:
         await self.session.refresh(task)
         return task
 
-    async def get_by_business_id(self, business_id: UUID) -> Sequence[Milestone]:
+    async def get_by_business_id(
+        self, business_id: UUID, page: int = 1, size: int = 100
+    ) -> Sequence[Milestone]:
+        offset = (page - 1) * size
         statement = (
             select(Milestone)
             .where(Milestone.business_id == business_id)
             .where(Milestone.deleted_at == None)
             .order_by(Milestone.order)  # type: ignore
+            .offset(offset)
+            .limit(size)
         )
         result = await self.session.execute(statement)
         return result.scalars().all()

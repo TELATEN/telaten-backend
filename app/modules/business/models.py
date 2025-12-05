@@ -23,6 +23,11 @@ class BusinessProfileBase(SQLModel):
         default=None, description="e.g. Increase Sales, Brand Awareness, New Branch"
     )
     total_points: int = Field(default=0)
+    ai_context: Optional[dict] = Field(
+        default=None,
+        sa_column=Column(JSON, default={}),
+        description="Context memory for AI agent (state, focus, risks)",
+    )
 
 
 class BusinessProfile(BusinessProfileBase, table=True):
@@ -64,6 +69,7 @@ class BusinessProfileRead(BusinessProfileBase):
     updated_at: datetime
     level_id: Optional[UUID] = None
     level_name: Optional[str] = None
+    ai_context: Optional[dict] = Field(default=None, exclude=True)
 
 
 class BusinessProfileUpdate(SQLModel):

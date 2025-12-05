@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, Response, Cookie, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.modules.auth.dependencies import (
-    get_current_business,
     get_current_user,
     get_optional_current_business,
 )
@@ -16,6 +15,7 @@ from app.modules.auth.models import (
 from app.modules.auth.repository import AuthRepository
 from app.modules.auth.service import AuthService
 from app.modules.business.models import BusinessProfile, BusinessProfileRead
+from app.modules.business.repository import BusinessRepository
 
 router = APIRouter()
 
@@ -29,6 +29,7 @@ def get_auth_service(db: AsyncSession = Depends(get_db)) -> AuthService:
 async def read_users_me(
     current_user: User = Depends(get_current_user),
     current_business: BusinessProfile | None = Depends(get_optional_current_business),
+    db: AsyncSession = Depends(get_db),
 ):
     if not current_business and current_user.role == "user":
         raise HTTPException(
@@ -39,6 +40,11 @@ async def read_users_me(
     business_read = None
     if current_business:
         business_read = BusinessProfileRead.model_validate(current_business)
+        if current_business.level_id:
+            business_repo = BusinessRepository(db)
+            level = await business_repo.get_level(current_business.level_id)
+            if level:
+                business_read.level_name = level.name
 
     return UserWithBusinessRead(**current_user.model_dump(), business=business_read)
 
