@@ -165,7 +165,6 @@ class ChatService:
                 if isinstance(event, AgentStream):
                     delta = event.delta
                     full_response_text += delta
-                    print(delta, end="", flush=True)
                     yield format_sse("token", None, {"text": delta})
 
                 elif isinstance(event, ToolCall):

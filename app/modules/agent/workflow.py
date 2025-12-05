@@ -1,5 +1,6 @@
 from llama_index.core.agent.workflow import AgentWorkflow, FunctionAgent
 from app.core.llm import get_llm
+from app.core.mcp_client import mcp_tools
 from app.modules.agent.tools import (
     create_milestone_tool,
     list_milestones_tool,
@@ -138,7 +139,8 @@ def get_chat_workflow(
             get_financial_report_tool,
             update_business_context_tool,
             get_transaction_categories_tool,
-        ],
+        ]
+        + mcp_tools,
     )
 
     workflow = AgentWorkflow(

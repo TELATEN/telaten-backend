@@ -13,6 +13,8 @@ from app.modules.finance.routes import router as finance_router
 from app.db.session import init_db, AsyncSessionLocal
 from app.core.logging import logger
 from app.db.init_data import init_admin_user
+from app.mcp_server import mcp
+from app.core.mcp_client import init_mcp_tools, cleanup_mcp_tools
 
 
 @asynccontextmanager
@@ -24,8 +26,14 @@ async def lifespan(app: FastAPI):
     async with AsyncSessionLocal() as session:
         await init_admin_user(session)
 
+    # Initialize MCP Client Tools
+    await init_mcp_tools()
+
     logger.info("Database initialized successfully")
     yield
+
+    # Cleanup
+    await cleanup_mcp_tools()
     logger.info("Shutting down application...")
 
 
@@ -77,3 +85,6 @@ app.include_router(
 app.include_router(
     finance_router, prefix=f"{settings.API_V1_STR}/finance", tags=["Finance"]
 )
+
+# Mount MCP Server
+app.mount("/mcp", mcp.sse_app())

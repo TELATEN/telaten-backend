@@ -27,13 +27,16 @@ class BusinessService:
             )
 
         level_name = None
+        level_icon = None
         if profile.level_id:
             level = await self.repo.get_level(profile.level_id)
             if level:
                 level_name = level.name
+                level_icon = level.icon
 
         profile_read = BusinessProfileRead.model_validate(profile)
         profile_read.level_name = level_name
+        profile_read.level_icon = level_icon
         return profile_read
 
     async def create_profile(

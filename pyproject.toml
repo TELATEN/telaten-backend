@@ -16,6 +16,7 @@ dependencies = [
   "structlog>=25.5.0",
   "llama-index>=0.14.8",
   "llama-index-llms-openai-like>=0.5.3",
+  "mcp>=1.23.1",
 ]
 
 [tool.ruff]

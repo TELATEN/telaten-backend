@@ -2,9 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 from app.modules.auth.models import User
 from app.core.security import get_password_hash
-import logging
-
-logger = logging.getLogger(__name__)
+from app.core.logging import logger
 
 
 async def init_admin_user(session: AsyncSession):

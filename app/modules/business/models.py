@@ -69,6 +69,7 @@ class BusinessProfileRead(BusinessProfileBase):
     updated_at: datetime
     level_id: Optional[UUID] = None
     level_name: Optional[str] = None
+    level_icon: Optional[str] = None
     ai_context: Optional[dict] = Field(default=None, exclude=True)
 
 
