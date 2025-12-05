@@ -11,11 +11,8 @@ RUN pip install --no-cache-dir --upgrade pip
 RUN pip install --no-cache-dir uv
 RUN uv sync --frozen --no-install-project
 
-# Final stage: runtime with Redis installed (small)
+# Final stage: runtime
 FROM python:3.12-alpine
-
-# install redis and required libs
-RUN apk add --no-cache redis
 
 # create non-root user
 RUN adduser -D appuser
@@ -29,9 +26,9 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --chown=appuser:appuser . .
 
 # ensure virtualenv dir is writable and fix ownership
-RUN mkdir -p /app/.venv && chown -R appuser:appuser /app
+RUN chown -R appuser:appuser /app
 
 USER appuser
 
 EXPOSE 8065
-CMD ["sh","-c","redis-server --daemonize yes && uv run python run.py"]
+CMD ["uv", "run", "python", "run.py"]
