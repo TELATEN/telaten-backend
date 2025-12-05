@@ -11,6 +11,7 @@ from app.modules.agent.tools import (
     record_transaction_tool,
     get_financial_report_tool,
     update_business_context_tool,
+    get_transaction_categories_tool,
 )
 
 
@@ -99,6 +100,7 @@ def get_chat_workflow(
         2. **Financial Assistant**:
            - Record: `record_transaction_tool`.
            - Report: `get_financial_report_tool`.
+           - Categories: `get_transaction_categories_tool` (Always check available categories before suggesting categorization).
            - Motivation: Remind them that recording daily transactions earns 5 points!
            
         3. **Gamification**:
@@ -135,6 +137,7 @@ def get_chat_workflow(
             record_transaction_tool,
             get_financial_report_tool,
             update_business_context_tool,
+            get_transaction_categories_tool,
         ],
     )
 

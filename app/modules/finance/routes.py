@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from uuid import UUID
 from app.db.session import get_db
@@ -12,6 +12,8 @@ from app.modules.finance.models import (
     TransactionRead,
     FinancialSummary,
     TransactionPagination,
+    TransactionCategoryRead,
+    TransactionCategoryCreate,
 )
 from app.modules.finance.repository import FinanceRepository
 from app.modules.finance.service import FinanceService
@@ -117,3 +119,65 @@ async def delete_transaction(
 
     await service.repo.delete(transaction)
     return {"message": "Transaction deleted successfully"}
+
+
+# --- Category Routes ---
+
+@router.get("/categories", response_model=List[TransactionCategoryRead])
+async def get_categories(
+    service: FinanceService = Depends(get_service),
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+):
+    business_repo = BusinessRepository(session)
+    business = await business_repo.get_by_user_id(current_user.id)
+    if not business:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Business profile not found",
+        )
+
+    return await service.get_categories(business.id)
+
+
+@router.post("/categories", response_model=TransactionCategoryRead)
+async def create_category(
+    category_in: TransactionCategoryCreate,
+    service: FinanceService = Depends(get_service),
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+):
+    business_repo = BusinessRepository(session)
+    business = await business_repo.get_by_user_id(current_user.id)
+    if not business:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Business profile not found",
+        )
+
+    return await service.create_category(business.id, category_in)
+
+
+@router.delete("/categories/{category_id}")
+async def delete_category(
+    category_id: UUID,
+    service: FinanceService = Depends(get_service),
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+):
+    business_repo = BusinessRepository(session)
+    business = await business_repo.get_by_user_id(current_user.id)
+    if not business:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Business profile not found",
+        )
+
+    try:
+        await service.delete_category(business.id, category_id)
+        return {"message": "Category deleted successfully"}
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )

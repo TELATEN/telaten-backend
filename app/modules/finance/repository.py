@@ -3,7 +3,7 @@ from sqlmodel import select, desc, func
 from uuid import UUID
 from typing import Sequence, Optional
 from datetime import datetime
-from app.modules.finance.models import Transaction
+from app.modules.finance.models import Transaction, TransactionCategory
 
 
 class FinanceRepository:
@@ -43,7 +43,7 @@ class FinanceRepository:
         # Apply pagination
         statement = statement.offset(skip).limit(limit)
         result = await self.session.execute(statement)
-        
+
         return result.scalars().all(), total
 
     async def get_by_id(self, transaction_id: UUID) -> Transaction | None:
@@ -52,4 +52,35 @@ class FinanceRepository:
 
     async def delete(self, transaction: Transaction) -> None:
         await self.session.delete(transaction)
+        await self.session.commit()
+
+    # --- Category Methods ---
+
+    async def create_category(
+        self, category: TransactionCategory
+    ) -> TransactionCategory:
+        self.session.add(category)
+        await self.session.commit()
+        await self.session.refresh(category)
+        return category
+
+    async def get_categories(self, business_id: UUID) -> Sequence[TransactionCategory]:
+        # Get system defaults (business_id is None) + business specific categories
+        statement = (
+            select(TransactionCategory)
+            .where(
+                (TransactionCategory.business_id == business_id)
+                | (TransactionCategory.business_id == None)
+            )
+            .order_by(TransactionCategory.type, TransactionCategory.name)
+        )
+
+        result = await self.session.execute(statement)
+        return result.scalars().all()
+
+    async def get_category_by_id(self, category_id: UUID) -> TransactionCategory | None:
+        return await self.session.get(TransactionCategory, category_id)
+
+    async def delete_category(self, category: TransactionCategory) -> None:
+        await self.session.delete(category)
         await self.session.commit()

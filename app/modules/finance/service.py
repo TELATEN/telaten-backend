@@ -1,7 +1,8 @@
 from uuid import UUID
-from typing import Optional
+from typing import Optional, Sequence
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
+from app.modules.business.repository import BusinessRepository
 from app.modules.finance.repository import FinanceRepository
 from app.modules.finance.models import (
     Transaction,
@@ -9,8 +10,11 @@ from app.modules.finance.models import (
     TransactionRead,
     FinancialSummary,
     TransactionPagination,
+    CategoryBreakdown,
+    TransactionCategory,
+    TransactionCategoryCreate,
 )
-from app.modules.business.repository import BusinessRepository
+from collections import defaultdict
 from app.modules.gamification.service import GamificationService
 import math
 
@@ -29,9 +33,22 @@ class FinanceService:
     async def create_transaction(
         self, business_id: UUID, transaction_in: TransactionCreate
     ) -> Transaction:
-        transaction = Transaction(
-            **transaction_in.model_dump(), business_id=business_id
-        )
+
+        category_name = transaction_in.category_name
+        if transaction_in.category_id:
+            cat = await self.repo.get_category_by_id(transaction_in.category_id)
+            if cat:
+                category_name = cat.name
+            else:
+                raise ValueError(
+                    f"Category with ID {transaction_in.category_id} not found"
+                )
+
+        data = transaction_in.model_dump()
+        # Populate derived fields
+        data["category"] = category_name
+
+        transaction = Transaction(**data, business_id=business_id)
         transaction = await self.repo.create(transaction)
 
         if self.gamification_service:
@@ -73,13 +90,17 @@ class FinanceService:
         )
 
     async def get_summary(
-        self, business_id: UUID, period: str = "month"  # "week", "month", "year", "all"
+        self,
+        business_id: UUID,
+        period: str = "month",  # "day", "week", "month", "year", "all"
     ) -> FinancialSummary:
         now = datetime.now()
         start_date = None
         end_date = now
 
-        if period == "week":
+        if period == "day":
+            start_date = now - timedelta(days=1)
+        elif period == "week":
             start_date = now - timedelta(days=7)
         elif period == "month":
             start_date = now - relativedelta(months=1)
@@ -91,9 +112,37 @@ class FinanceService:
             business_id, start_date, end_date, skip=0, limit=10000
         )
 
-        total_income = sum(t.amount for t in transactions if t.type == "INCOME")
-        total_expense = sum(t.amount for t in transactions if t.type == "EXPENSE")
+        total_income = 0.0
+        total_expense = 0.0
+        income_categories = defaultdict(float)
+        expense_categories = defaultdict(float)
+
+        for t in transactions:
+            amount = float(t.amount)
+            # Use category_name snapshot or category string
+            cat_label = t.category_name if t.category_name else t.category
+
+            if t.type == "INCOME":
+                total_income += amount
+                income_categories[cat_label] += amount
+            elif t.type == "EXPENSE":
+                total_expense += amount
+                expense_categories[cat_label] += amount
+
         net_profit = total_income - total_expense
+
+        # Helper to create breakdown list
+        def create_breakdown(categories: dict, total: float) -> list[CategoryBreakdown]:
+            if total == 0:
+                return []
+            return [
+                CategoryBreakdown(
+                    category=cat,
+                    amount=amt,
+                    percentage=round((amt / total) * 100, 2),
+                )
+                for cat, amt in categories.items()
+            ]
 
         return FinancialSummary(
             total_income=total_income,
@@ -101,4 +150,30 @@ class FinanceService:
             net_profit=net_profit,
             period_start=start_date,
             period_end=end_date,
+            income_breakdown=create_breakdown(income_categories, total_income),
+            expense_breakdown=create_breakdown(expense_categories, total_expense),
         )
+
+    # --- Category Management ---
+
+    async def create_category(
+        self, business_id: UUID, category_in: TransactionCategoryCreate
+    ) -> TransactionCategory:
+        category = TransactionCategory(
+            **category_in.model_dump(), business_id=business_id
+        )
+        return await self.repo.create_category(category)
+
+    async def get_categories(self, business_id: UUID) -> Sequence[TransactionCategory]:
+        return await self.repo.get_categories(business_id)
+
+    async def delete_category(self, business_id: UUID, category_id: UUID) -> None:
+        category = await self.repo.get_category_by_id(category_id)
+        if not category:
+            raise ValueError("Category not found")
+
+        # Only allow deleting own categories
+        if category.business_id != business_id:
+            raise ValueError("Not authorized to delete this category")
+
+        await self.repo.delete_category(category)

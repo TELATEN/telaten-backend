@@ -265,7 +265,13 @@ async def get_business_summary_tool(business_id: str) -> str:
 
 
 async def record_transaction_tool(
-    business_id: str, type: str, amount: float, category: str, description: str = ""
+    business_id: str,
+    type: str,
+    amount: float,
+    category_name: str,
+    description: str = "",
+    category_id: str | None = None,
+    payment_method: str = "CASH",
 ) -> str:
     """
     Records a financial transaction (Income or Expense).
@@ -274,8 +280,10 @@ async def record_transaction_tool(
         business_id: The UUID of the business.
         type: 'INCOME' or 'EXPENSE'.
         amount: The amount of money.
-        category: Category of transaction (e.g., Sales, Food, Transport).
+        category_name: Category name (text fallback).
         description: Brief description.
+        category_id: UUID of the category (optional but recommended).
+        payment_method: 'CASH', 'TRANSFER', 'QRIS', etc.
     """
     try:
         async with AsyncSessionLocal() as session:
@@ -285,17 +293,21 @@ async def record_transaction_tool(
             gamification_service = GamificationService(gamification_repo, business_repo)
             service = FinanceService(repo, business_repo, gamification_service)
 
+            cat_uuid = UUID(category_id) if category_id else None
+
             transaction_in = TransactionCreate(
-                type=type.upper(),
                 amount=amount,
-                category=category,
+                type=type.upper(),
+                category_name=category_name,
+                category_id=cat_uuid,
                 description=description,
+                payment_method=payment_method,
             )
 
             transaction = await service.create_transaction(
                 UUID(business_id), transaction_in
             )
-            return f"Success: Recorded {type} of {amount} for '{category}'. ID: {transaction.id}"
+            return f"Success: Recorded {type} of {amount} for '{category_name}'. ID: {transaction.id}"
     except Exception as e:
         return f"Error recording transaction: {str(e)}"
 
@@ -325,6 +337,34 @@ async def get_financial_report_tool(business_id: str, period: str = "month") -> 
             )
     except Exception as e:
         return f"Error getting financial report: {str(e)}"
+
+
+async def get_transaction_categories_tool(business_id: str) -> str:
+    """
+    Retrieves the list of available transaction categories for the business.
+    This includes system default categories and custom business categories.
+
+    Args:
+        business_id: The UUID of the business.
+    """
+    try:
+        async with AsyncSessionLocal() as session:
+            repo = FinanceRepository(session)
+            categories = await repo.get_categories(UUID(business_id))
+
+            if not categories:
+                return "No categories found."
+
+            result = []
+            for cat in categories:
+                default_tag = "[Default]" if cat.is_default else "[Custom]"
+                result.append(
+                    f"ID: {cat.id} | Name: {cat.name} | Type: {cat.type} | {default_tag}"
+                )
+
+            return "\n".join(result)
+    except Exception as e:
+        return f"Error listing categories: {str(e)}"
 
 
 async def update_business_context_tool(
@@ -405,14 +445,14 @@ async def update_business_context_tool(
                 try:
                     # Check bounds
                     if 0 <= remove_condition_index < len(context["conditions"]):
-                        removed = context["conditions"].pop(remove_condition_index)
+                        context["conditions"].pop(remove_condition_index)
                 except IndexError:
                     pass # Ignore invalid index
 
             if remove_risk_factor_index is not None and "risk_factors" in context:
                 try:
                     if 0 <= remove_risk_factor_index < len(context["risk_factors"]):
-                        removed = context["risk_factors"].pop(remove_risk_factor_index)
+                        context["risk_factors"].pop(remove_risk_factor_index)
                 except IndexError:
                     pass
 
