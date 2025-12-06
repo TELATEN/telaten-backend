@@ -1,3 +1,39 @@
+<div align="center">
+  <h1>🗄️ Entity Relationship Diagram</h1>
+  <p><em>Complete database schema and relationships for Telaten Backend</em></p>
+</div>
+
+---
+
+## 📚 Database Overview
+
+The Telaten Backend uses a **PostgreSQL** database with **SQLModel** for type-safe ORM operations. The schema supports:
+
+- 👤 **User Management**: Authentication and role-based access
+- 🏢 **Business Profiles**: Complete business information with gamification
+- 🎯 **Milestone System**: AI-generated goals and task tracking  
+- 💰 **Financial Tracking**: Transactions and category management
+- 🏆 **Gamification**: Levels, achievements, and leaderboards
+- 💬 **AI Chat**: Context-aware conversation sessions
+
+---
+
+## 🔗 Key Relationships
+
+| **Relationship** | **Type** | **Purpose** |
+|------------------|----------|-------------|
+| User → BusinessProfile | One-to-One | Each user has one business |
+| BusinessProfile → BusinessLevel | Many-to-One | Level progression system |
+| BusinessProfile → Milestones | One-to-Many | Business milestone roadmap |
+| Milestone → MilestoneTasks | One-to-Many | Granular task breakdown |
+| BusinessProfile → Transactions | One-to-Many | Financial record keeping |
+| User → UserAchievements | One-to-Many | Achievement tracking |
+| BusinessProfile → ChatSessions | One-to-Many | AI conversation history |
+
+---
+
+## 📊 Entity Relationship Diagram
+
 ```mermaid
 erDiagram
     User {
@@ -141,3 +177,78 @@ erDiagram
 
     ChatSession ||--o{ ChatMessage : "contains"
 ```
+
+---
+
+## 📋 Entity Details
+
+### 👤 Core Entities
+
+#### **User**
+- **Purpose**: Central authentication and user management
+- **Key Features**: Role-based access (`user`/`admin`), secure password hashing
+- **Relationships**: One business profile, multiple achievements
+
+#### **BusinessProfile** 
+- **Purpose**: Complete business information with AI integration
+- **Key Features**: Gamification points, AI context storage, level progression
+- **Relationships**: Hub entity connecting to milestones, transactions, chat sessions
+
+### 🎯 Progress Tracking
+
+#### **Milestone & MilestoneTask**
+- **Purpose**: AI-generated business goals with granular task breakdown
+- **Key Features**: Status tracking, reward points, AI generation flags
+- **Workflow**: Pending → In Progress → Completed (auto-progression)
+
+#### **BusinessLevel**
+- **Purpose**: Gamification tier system for business advancement  
+- **Key Features**: Point thresholds, visual icons, ordered progression
+- **Integration**: Automatically updated based on total points
+
+### 💰 Financial Management
+
+#### **Transaction & TransactionCategory**
+- **Purpose**: Comprehensive financial tracking with flexible categorization
+- **Key Features**: System defaults + custom categories, gamification rewards
+- **Analytics**: Period-based summaries and category breakdowns
+
+### 🏆 Gamification System
+
+#### **Achievement & UserAchievement**
+- **Purpose**: Badge system for milestone recognition
+- **Key Features**: Point thresholds, one-time unlocks, visual badges
+- **Motivation**: Leaderboard integration and progress celebration
+
+### 💬 AI Communication
+
+#### **ChatSession & ChatMessage**
+- **Purpose**: Context-aware AI conversations with business integration
+- **Key Features**: Session organization, role-based messages, persistent memory
+- **Intelligence**: Business context injection and tool execution
+
+---
+
+## 🔧 Technical Implementation Notes
+
+### **Data Types & Constraints**
+- **UUIDs**: Primary keys for all entities (better for distributed systems)
+- **JSON Fields**: Flexible schema for `address` and `ai_context`
+- **Soft Deletion**: `deleted_at` timestamps preserve data integrity
+- **Timestamps**: Comprehensive audit trail with `created_at`/`updated_at`
+
+### **Performance Considerations**
+- **Indexes**: Strategic indexing on foreign keys and query-heavy fields
+- **Relationships**: Optimized for common query patterns (business-centric views)
+- **Pagination**: Built-in support for large dataset handling
+
+### **Security Features**
+- **Role-Based Access**: User/Admin separation with proper authorization
+- **Data Isolation**: Business-scoped data access (users only see their data)
+- **Audit Trail**: Complete activity logging with timestamps
+
+---
+
+<div align="center">
+  <p><em>🗄️ Database schema complete - Robust foundation for AI-powered business growth!</em></p>
+</div>
