@@ -9,6 +9,7 @@
 * **[Finance & Milestones](docs/finance_milestone.md)** – Transaction tracking and actionable business roadmaps.
 * **[Gamification & Chat](docs/gamification_chat.md)** – Points, badges, leaderboards, and AI-assisted conversations.
 * **[Agent & System Entry](docs/agent_main.md)** – AI workflows, tools, MCP server details, and application entry points.
+* **[Entity Relationship Diagram (ERD)](docs/ERD.md)** – Visual representation of the database schema.
 
 ## 🌟 Key Features
 
