@@ -11,6 +11,7 @@ from app.modules.agent.workflow import get_chat_workflow
 from app.modules.auth.models import User
 from llama_index.core.llms import ChatMessage as LLChatMessage, MessageRole
 from llama_index.core.agent.workflow import (
+    AgentOutput,
     ToolCall,
     ToolCallResult,
     AgentStream,
@@ -156,7 +157,7 @@ class ChatService:
         logger.debug(f"User Message: {message_in.content}")
         try:
             handler = workflow.run(
-                user_msg=message_in.content, chat_history=chat_history[:-1]
+                user_msg=message_in.content, chat_history=chat_history
             )
 
             full_response_text = ""
@@ -166,6 +167,9 @@ class ChatService:
                     delta = event.delta
                     full_response_text += delta
                     yield format_sse("token", None, {"text": delta})
+
+                elif isinstance(event, AgentOutput):
+                    logger.debug(f"Agent Output: {event.response}")
 
                 elif isinstance(event, ToolCall):
                     logger.debug(

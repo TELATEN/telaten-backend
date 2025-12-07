@@ -222,7 +222,40 @@ async def delete_milestone_tool(milestone_id: str) -> str:
         return f"Error deleting milestone: {str(e)}"
 
 
-# --- NEW TOOLS FOR BUSINESS DATA & FINANCE ---
+async def list_recent_transactions_tool(business_id: str, limit: int = 5) -> str:
+    """
+    Lists the most recent transactions for the business.
+    Use this to see details of expenses or income sources.
+
+    Args:
+        business_id: The UUID of the business.
+        limit: Number of transactions to return (default 5).
+    """
+    try:
+        async with AsyncSessionLocal() as session:
+            repo = FinanceRepository(session)
+            # unpack the tuple (transactions, count)
+            transactions, _ = await repo.get_by_business_id(
+                UUID(business_id), skip=0, limit=limit
+            )
+
+            if not transactions:
+                return "No recent transactions found."
+
+            result = ["Recent Transactions:"]
+            for t in transactions:
+                t_date = (
+                    t.transaction_date.strftime("%Y-%m-%d")
+                    if t.transaction_date
+                    else "N/A"
+                )
+                result.append(
+                    f"- {t_date} | {t.type} | {t.category_name} | Amount: {t.amount} | Desc: {t.description or '-'}"
+                )
+
+            return "\n".join(result)
+    except Exception as e:
+        return f"Error listing transactions: {str(e)}"
 
 
 async def get_business_summary_tool(business_id: str) -> str:
@@ -305,7 +338,7 @@ async def record_transaction_tool(
             service = FinanceService(repo, business_repo, gamification_service)
 
             cat_uuid = UUID(category_id) if category_id else None
-            
+
             t_date = None
             if transaction_date:
                 try:
@@ -452,10 +485,16 @@ async def update_business_context_tool(
                     context["risk_factors"].append(risk_factor)
 
             # UPDATE Logic for Conditions
-            if update_condition_index is not None and update_condition_text and "conditions" in context:
+            if (
+                update_condition_index is not None
+                and update_condition_text
+                and "conditions" in context
+            ):
                 try:
                     if 0 <= update_condition_index < len(context["conditions"]):
-                        context["conditions"][update_condition_index] = update_condition_text
+                        context["conditions"][
+                            update_condition_index
+                        ] = update_condition_text
                 except IndexError:
                     pass
 
@@ -466,7 +505,7 @@ async def update_business_context_tool(
                     if 0 <= remove_condition_index < len(context["conditions"]):
                         context["conditions"].pop(remove_condition_index)
                 except IndexError:
-                    pass # Ignore invalid index
+                    pass  # Ignore invalid index
 
             if remove_risk_factor_index is not None and "risk_factors" in context:
                 try:
