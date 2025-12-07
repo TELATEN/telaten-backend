@@ -1,8 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Sequence
 from uuid import UUID
-from app.db.session import get_db
 from app.modules.auth.dependencies import get_current_user
 from app.modules.auth.models import User
 from app.modules.business.models import (
@@ -38,7 +36,7 @@ async def get_levels_admin(
 ):
     """List all available business levels (Admin)."""
     if current_user.role != "admin":
-         raise HTTPException(status_code=403, detail="Not authorized")
+        raise HTTPException(status_code=403, detail="Not authorized")
     return await repo.get_levels()
 
 
