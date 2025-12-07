@@ -78,18 +78,18 @@ class FinanceRepository:
         """Creates default transaction categories for a new business."""
         default_categories = [
             # EXPENSE
-            {"name": "Bahan Baku", "type": "EXPENSE", "icon": "shopping-cart"},
-            {"name": "Gaji Karyawan", "type": "EXPENSE", "icon": "users"},
-            {"name": "Sewa Tempat", "type": "EXPENSE", "icon": "home"},
-            {"name": "Listrik & Air", "type": "EXPENSE", "icon": "zap"},
-            {"name": "Transportasi", "type": "EXPENSE", "icon": "truck"},
-            {"name": "Pemasaran", "type": "EXPENSE", "icon": "megaphone"},
-            {"name": "Lainnya", "type": "EXPENSE", "icon": "more-horizontal"},
+            {"name": "Bahan Baku", "type": "EXPENSE", "icon": "🛒"},
+            {"name": "Gaji Karyawan", "type": "EXPENSE", "icon": "👤"},
+            {"name": "Sewa Tempat", "type": "EXPENSE", "icon": "🏠"},
+            {"name": "Listrik & Air", "type": "EXPENSE", "icon": "⛏️"},
+            {"name": "Transportasi", "type": "EXPENSE", "icon": "🚚"},
+            {"name": "Pemasaran", "type": "EXPENSE", "icon": "📢"},
+            {"name": "Lainnya", "type": "EXPENSE", "icon": "♾️"},
             # INCOME
-            {"name": "Penjualan", "type": "INCOME", "icon": "tag"},
-            {"name": "Investasi", "type": "INCOME", "icon": "trending-up"},
-            {"name": "Bonus", "type": "INCOME", "icon": "gift"},
-            {"name": "Lainnya", "type": "INCOME", "icon": "more-horizontal"},
+            {"name": "Penjualan", "type": "INCOME", "icon": "💲"},
+            {"name": "Investasi", "type": "INCOME", "icon": "📈"},
+            {"name": "Bonus", "type": "INCOME", "icon": "🤑"},
+            {"name": "Lainnya", "type": "INCOME", "icon": "🧲"},
         ]
 
         for data in default_categories:
