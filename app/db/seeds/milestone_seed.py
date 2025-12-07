@@ -1,11 +1,10 @@
-import logging
 from datetime import datetime, timezone
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 from app.modules.milestone.models import Milestone, MilestoneTask
+from app.core.logging import logger
 
-logger = logging.getLogger(__name__)
 
 async def seed_milestones(session: AsyncSession, business_id: UUID):
     """Seed Milestones and Tasks."""

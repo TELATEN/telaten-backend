@@ -1,10 +1,10 @@
-import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select, desc
 from app.modules.auth.models import User
 from app.modules.business.models import BusinessProfile, BusinessLevel
+from app.core.logging import logger
+from app.modules.finance.repository import FinanceRepository
 
-logger = logging.getLogger(__name__)
 
 async def seed_business(session: AsyncSession, user: User) -> BusinessProfile | None:
     """Seed Business Profile for User."""
@@ -28,6 +28,10 @@ async def seed_business(session: AsyncSession, user: User) -> BusinessProfile | 
         session.add(profile)
         await session.commit()
         await session.refresh(profile)
+
+        finance_repo = FinanceRepository(session)
+        await finance_repo.create_default_categories(profile.id)
+
         logger.info("Created Business Profile")
     else:
         logger.info("Business Profile exists")

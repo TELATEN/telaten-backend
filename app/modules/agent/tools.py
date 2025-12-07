@@ -5,11 +5,12 @@ from app.modules.milestone.models import Milestone, MilestoneTask
 from app.modules.milestone.repository import MilestoneRepository
 from app.modules.business.repository import BusinessRepository
 from app.modules.gamification.repository import GamificationRepository
-from app.modules.finance.models import TransactionCreate
+from app.modules.finance.models import TransactionCreate, TransactionCategoryCreate
 from app.modules.finance.repository import FinanceRepository
 from app.modules.finance.service import FinanceService
 from app.modules.gamification.service import GamificationService
 from app.db.session import AsyncSessionLocal
+from sqlalchemy.orm.attributes import flag_modified
 
 
 async def create_milestone_tool(
@@ -222,6 +223,34 @@ async def delete_milestone_tool(milestone_id: str) -> str:
         return f"Error deleting milestone: {str(e)}"
 
 
+async def create_transaction_category_tool(
+    business_id: str, name: str, type: str
+) -> str:
+    """
+    Creates a new CUSTOM transaction category for the business.
+    Use this when the user needs a category that doesn't exist in the default list.
+
+    Args:
+        business_id: The UUID of the business.
+        name: The name of the new category (e.g., "Endorsements", "Software Subscriptions").
+        type: 'INCOME' or 'EXPENSE'.
+    """
+    try:
+        async with AsyncSessionLocal() as session:
+            repo = FinanceRepository(session)
+            business_repo = BusinessRepository(session)
+            service = FinanceService(repo, business_repo)
+
+            category_in = TransactionCategoryCreate(name=name, type=type.upper())
+
+            category = await service.create_category(UUID(business_id), category_in)
+            return (
+                f"Success: Created new category '{category.name}' (ID: {category.id})"
+            )
+    except Exception as e:
+        return f"Error creating category: {str(e)}"
+
+
 async def list_recent_transactions_tool(business_id: str, limit: int = 5) -> str:
     """
     Lists the most recent transactions for the business.
@@ -310,26 +339,30 @@ async def record_transaction_tool(
     business_id: str,
     type: str,
     amount: float,
+    category_id: str,
     category_name: str,
     description: str = "",
-    category_id: str | None = None,
     payment_method: str = "CASH",
     transaction_date: str | None = None,
 ) -> str:
     """
     Records a financial transaction (Income or Expense).
+    CRITICAL: You MUST provide a valid 'category_id'. call 'get_transaction_categories_tool' first if needed.
 
     Args:
         business_id: The UUID of the business.
         type: 'INCOME' or 'EXPENSE'.
         amount: The amount of money.
-        category_name: Category name (text fallback).
+        category_id: UUID of the category. REQUIRED.
+        category_name: Category name (for display/snapshot). REQUIRED.
         description: Brief description.
-        category_id: UUID of the category (optional but recommended).
         payment_method: 'CASH', 'TRANSFER', 'QRIS', etc.
         transaction_date: ISO date string (e.g., '2023-12-25'). Defaults to now.
     """
     try:
+        if not category_id:
+            return "Error: 'category_id' is required. Please check available categories first."
+
         async with AsyncSessionLocal() as session:
             repo = FinanceRepository(session)
             business_repo = BusinessRepository(session)
@@ -337,7 +370,7 @@ async def record_transaction_tool(
             gamification_service = GamificationService(gamification_repo, business_repo)
             service = FinanceService(repo, business_repo, gamification_service)
 
-            cat_uuid = UUID(category_id) if category_id else None
+            cat_uuid = UUID(category_id)
 
             t_date = None
             if transaction_date:
@@ -359,7 +392,7 @@ async def record_transaction_tool(
             transaction = await service.create_transaction(
                 UUID(business_id), transaction_in
             )
-            return f"Success: Recorded {type} of {amount} for '{category_name}'. ID: {transaction.id}"
+            return f"Success: Recorded {type} of {amount} for category ID '{category_id}' (Name: {category_name}). ID: {transaction.id}"
     except Exception as e:
         return f"Error recording transaction: {str(e)}"
 
@@ -409,10 +442,7 @@ async def get_transaction_categories_tool(business_id: str) -> str:
 
             result = []
             for cat in categories:
-                default_tag = "[Default]" if cat.is_default else "[Custom]"
-                result.append(
-                    f"ID: {cat.id} | Name: {cat.name} | Type: {cat.type} | {default_tag}"
-                )
+                result.append(f"ID: {cat.id} | Name: {cat.name} | Type: {cat.type}")
 
             return "\n".join(result)
     except Exception as e:
@@ -423,27 +453,35 @@ async def update_business_context_tool(
     business_id: str,
     current_focus: str | None = None,
     financial_health: str | None = None,
-    user_mood: str | None = None,
+    business_scale: str | None = None,
+    sales_channel: str | None = None,
+    operational_type: str | None = None,
     condition_update: str | None = None,
     risk_factor: str | None = None,
+    personal_memory: str | None = None,
     remove_condition_index: int | None = None,
     remove_risk_factor_index: int | None = None,
+    remove_personal_memory_index: int | None = None,
     update_condition_index: int | None = None,
     update_condition_text: str | None = None,
 ) -> str:
     """
-    Updates the AI's context memory about the business status.
-    USE THIS whenever the user reveals important changes or conditions.
+    Updates the AI's context memory about the business status and user.
+    USE THIS whenever the user reveals important changes, conditions, or personal details.
 
     Args:
         business_id: The UUID of the business.
         current_focus: E.g., "Marketing", "Product", "Finance".
         financial_health: E.g., "Critical", "Stable", "Growing".
-        user_mood: E.g., "Optimistic", "Frustrated", "Burned out".
-        condition_update: A specific fact to ADD to the conditions list.
-        risk_factor: A risk to ADD.
-        remove_condition_index: Index of the condition to REMOVE (0-based).
-        remove_risk_factor_index: Index of the risk factor to REMOVE (0-based).
+        business_scale: E.g., "Micro" (Home-based), "Small" (Has staff), "Medium" (Multiple branches).
+        sales_channel: E.g., "Online", "Offline", "Hybrid".
+        operational_type: E.g., "Producer" (Makes product), "Reseller" (Sells others'), "Service".
+        condition_update: A specific business fact to ADD (e.g., "Menu favorite: Bakso").
+        risk_factor: A business risk to ADD.
+        personal_memory: A personal detail about the user to ADD (e.g., "Nama panggilan: Budi", "Suka dipuji", "Punya anak 2").
+        remove_condition_index: Index of the condition to REMOVE.
+        remove_risk_factor_index: Index of the risk factor to REMOVE.
+        remove_personal_memory_index: Index of the personal memory to REMOVE.
         update_condition_index: Index of the condition to UPDATE.
         update_condition_text: New text for the condition at that index.
     """
@@ -455,40 +493,59 @@ async def update_business_context_tool(
             if not business:
                 return "Business not found."
 
-            # Initialize if empty
             if not business.ai_context:
                 business.ai_context = {
+                    "current_focus": "N/A",
+                    "financial_health": "N/A",
+                    "business_scale": "Micro",
+                    "sales_channel": "N/A",
+                    "operational_type": "N/A",
                     "conditions": [],
                     "risk_factors": [],
+                    "personal_memory": [],
                 }
 
             context = business.ai_context
+            context.setdefault("current_focus", "N/A")
+            context.setdefault("financial_health", "N/A")
+            context.setdefault("business_scale", "Micro")
+            context.setdefault("sales_channel", "N/A")
+            context.setdefault("operational_type", "N/A")
+            context.setdefault("conditions", [])
+            context.setdefault("risk_factors", [])
+            context.setdefault("personal_memory", [])
 
-            if current_focus:
+            # Update Single Fields
+            if current_focus and current_focus.lower() != "none":
                 context["current_focus"] = current_focus
-            if financial_health:
+            if financial_health and financial_health.lower() != "none":
                 context["financial_health"] = financial_health
-            if user_mood:
-                context["user_mood"] = user_mood
+            if business_scale and business_scale.lower() != "none":
+                context["business_scale"] = business_scale
+            if sales_channel and sales_channel.lower() != "none":
+                context["sales_channel"] = sales_channel
+            if operational_type and operational_type.lower() != "none":
+                context["operational_type"] = operational_type
 
             # ADD Logic
-            if condition_update:
-                if "conditions" not in context:
-                    context["conditions"] = []
+            if condition_update and condition_update.lower() != "none":
                 if condition_update not in context["conditions"]:
                     context["conditions"].append(condition_update)
 
-            if risk_factor:
-                if "risk_factors" not in context:
-                    context["risk_factors"] = []
+            if risk_factor and risk_factor.lower() != "none":
                 if risk_factor not in context["risk_factors"]:
                     context["risk_factors"].append(risk_factor)
+
+            if personal_memory and personal_memory.lower() != "none":
+                print(personal_memory)
+                if personal_memory not in context["personal_memory"]:
+                    context["personal_memory"].append(personal_memory)
 
             # UPDATE Logic for Conditions
             if (
                 update_condition_index is not None
                 and update_condition_text
-                and "conditions" in context
+                and update_condition_text.lower() != "none"
             ):
                 try:
                     if 0 <= update_condition_index < len(context["conditions"]):
@@ -498,27 +555,37 @@ async def update_business_context_tool(
                 except IndexError:
                     pass
 
-            # REMOVE Logic (Index Based)
-            if remove_condition_index is not None and "conditions" in context:
+            if remove_condition_index is not None:
                 try:
-                    # Check bounds
                     if 0 <= remove_condition_index < len(context["conditions"]):
                         context["conditions"].pop(remove_condition_index)
                 except IndexError:
-                    pass  # Ignore invalid index
+                    pass
 
-            if remove_risk_factor_index is not None and "risk_factors" in context:
+            if remove_risk_factor_index is not None:
                 try:
                     if 0 <= remove_risk_factor_index < len(context["risk_factors"]):
                         context["risk_factors"].pop(remove_risk_factor_index)
                 except IndexError:
                     pass
 
+            if remove_personal_memory_index is not None:
+                try:
+                    if (
+                        0
+                        <= remove_personal_memory_index
+                        < len(context["personal_memory"])
+                    ):
+                        context["personal_memory"].pop(remove_personal_memory_index)
+                except IndexError:
+                    pass
+
             # Save back
+            flag_modified(business, "ai_context")
             business.ai_context = context
             await repo.update(business)
 
-            return f"Success: Context updated. Focus: {context.get('current_focus', 'N/A')}"
+            return f"Success: Context updated : {context}"
 
     except Exception as e:
         return f"Error updating context: {str(e)}"

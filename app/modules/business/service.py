@@ -8,6 +8,7 @@ from app.modules.business.models import (
     BusinessProfileRead,
 )
 from app.modules.business.repository import BusinessRepository
+from app.modules.finance.repository import FinanceRepository
 from app.modules.agent.service import AgentService
 from app.db.session import AsyncSessionLocal
 from app.core.utils import format_sse
@@ -42,7 +43,6 @@ class BusinessService:
     async def create_profile(
         self, user_id: UUID, profile_in: BusinessProfileCreate
     ) -> BusinessProfile:
-        # Check if profile already exists
         existing_profile = await self.repo.get_by_user_id(user_id)
         if existing_profile:
             raise HTTPException(
@@ -51,7 +51,11 @@ class BusinessService:
             )
 
         profile = BusinessProfile(user_id=user_id, **profile_in.model_dump())
-        return await self.repo.create(profile)
+        profile = await self.repo.create(profile)
+        finance_repo = FinanceRepository(self.repo.session)
+        await finance_repo.create_default_categories(profile.id)
+
+        return profile
 
     async def update_profile(
         self, user_id: UUID, profile_in: BusinessProfileUpdate

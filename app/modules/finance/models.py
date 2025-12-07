@@ -9,7 +9,6 @@ class TransactionCategoryBase(SQLModel):
     name: str = Field(index=True)
     type: str = Field(index=True, description="INCOME or EXPENSE")
     icon: Optional[str] = None
-    is_default: bool = Field(default=False)
 
 
 class TransactionCategory(TransactionCategoryBase, table=True):
@@ -37,12 +36,8 @@ class TransactionCategoryCreate(TransactionCategoryBase):
 class TransactionBase(SQLModel):
     amount: float = Field(sa_column=Column(Numeric(12, 2)))
     type: str = Field(index=True, description="INCOME or EXPENSE")
-    category: str = Field(index=True)
-
-    category_id: Optional[UUID] = Field(
-        default=None, foreign_key="transaction_categories.id"
-    )
-    category_name: Optional[str] = None
+    category_id: UUID = Field(foreign_key="transaction_categories.id")
+    category_name: str = Field(index=True)
 
     payment_method: str = Field(
         default="CASH", index=True, description="CASH, TRANSFER, QRIS, ETC"
@@ -83,13 +78,8 @@ class TransactionPagination(SQLModel):
 class TransactionCreate(SQLModel):
     amount: float
     type: str
-    category_id: Optional[UUID] = None
-    category_name: (
-        str  # User sends name, backend finds/creates or just uses name if custom?
-    )
-    # Better: User selects ID. If custom, maybe allow creating new category first.
-    # Simpler: User sends category_id OR category_name (for text fallback).
-    # Let's strictly use category_id for "managed" categories.
+    category_id: UUID
+    category_name: str
 
     payment_method: str = "CASH"
     description: Optional[str] = None

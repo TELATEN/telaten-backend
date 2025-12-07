@@ -1,10 +1,9 @@
-import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 from app.modules.gamification.models import Achievement
 from app.modules.business.models import BusinessLevel
+from app.core.logging import logger
 
-logger = logging.getLogger(__name__)
 
 async def seed_gamification(session: AsyncSession):
     """Seed Business Levels and Achievements."""

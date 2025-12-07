@@ -1,11 +1,9 @@
-import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select, desc
 from app.core.security import get_password_hash
 from app.modules.auth.models import User
 from app.modules.business.models import BusinessProfile, BusinessLevel
-
-logger = logging.getLogger(__name__)
+from app.core.logging import logger
 
 
 async def seed_users(session: AsyncSession) -> User:

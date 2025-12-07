@@ -33,25 +33,18 @@ class FinanceService:
     async def create_transaction(
         self, business_id: UUID, transaction_in: TransactionCreate
     ) -> Transaction:
-
-        category_name = transaction_in.category_name
-        if transaction_in.category_id:
-            cat = await self.repo.get_category_by_id(transaction_in.category_id)
-            if cat:
-                category_name = cat.name
-            else:
-                raise ValueError(
-                    f"Category with ID {transaction_in.category_id} not found"
-                )
-
+        cat = await self.repo.get_category_by_id(transaction_in.category_id)
+        if not cat:
+            raise ValueError(f"Category with ID {transaction_in.category_id} not found")
+        final_category_name = cat.name
         data = transaction_in.model_dump()
 
         # Ensure transaction_date is not None if not provided
         if data.get("transaction_date") is None:
             del data["transaction_date"]
 
-        # Populate derived fields
-        data["category"] = category_name
+        data["category"] = final_category_name
+        data["category_name"] = final_category_name
 
         transaction = Transaction(**data, business_id=business_id)
         transaction = await self.repo.create(transaction)
@@ -124,8 +117,7 @@ class FinanceService:
 
         for t in transactions:
             amount = float(t.amount)
-            # Use category_name snapshot or category string
-            cat_label = t.category_name if t.category_name else t.category
+            cat_label = t.category_name
 
             if t.type == "INCOME":
                 total_income += amount

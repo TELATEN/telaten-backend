@@ -65,18 +65,43 @@ class FinanceRepository:
         return category
 
     async def get_categories(self, business_id: UUID) -> Sequence[TransactionCategory]:
-        # Get system defaults (business_id is None) + business specific categories
         statement = (
             select(TransactionCategory)
-            .where(
-                (TransactionCategory.business_id == business_id)
-                | (TransactionCategory.business_id == None)
-            )
+            .where(TransactionCategory.business_id == business_id)
             .order_by(TransactionCategory.type, TransactionCategory.name)
         )
 
         result = await self.session.execute(statement)
         return result.scalars().all()
+
+    async def create_default_categories(self, business_id: UUID) -> None:
+        """Creates default transaction categories for a new business."""
+        default_categories = [
+            # EXPENSE
+            {"name": "Bahan Baku", "type": "EXPENSE", "icon": "shopping-cart"},
+            {"name": "Gaji Karyawan", "type": "EXPENSE", "icon": "users"},
+            {"name": "Sewa Tempat", "type": "EXPENSE", "icon": "home"},
+            {"name": "Listrik & Air", "type": "EXPENSE", "icon": "zap"},
+            {"name": "Transportasi", "type": "EXPENSE", "icon": "truck"},
+            {"name": "Pemasaran", "type": "EXPENSE", "icon": "megaphone"},
+            {"name": "Lainnya", "type": "EXPENSE", "icon": "more-horizontal"},
+            # INCOME
+            {"name": "Penjualan", "type": "INCOME", "icon": "tag"},
+            {"name": "Investasi", "type": "INCOME", "icon": "trending-up"},
+            {"name": "Bonus", "type": "INCOME", "icon": "gift"},
+            {"name": "Lainnya", "type": "INCOME", "icon": "more-horizontal"},
+        ]
+
+        for data in default_categories:
+            category = TransactionCategory(
+                name=data["name"],
+                type=data["type"],
+                icon=data["icon"],
+                business_id=business_id,
+            )
+            self.session.add(category)
+
+        await self.session.commit()
 
     async def get_category_by_id(self, category_id: UUID) -> TransactionCategory | None:
         return await self.session.get(TransactionCategory, category_id)
