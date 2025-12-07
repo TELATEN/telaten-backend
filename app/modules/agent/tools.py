@@ -537,7 +537,6 @@ async def update_business_context_tool(
                     context["risk_factors"].append(risk_factor)
 
             if personal_memory and personal_memory.lower() != "none":
-                print(personal_memory)
                 if personal_memory not in context["personal_memory"]:
                     context["personal_memory"].append(personal_memory)
 

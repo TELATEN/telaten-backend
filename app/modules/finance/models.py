@@ -1,4 +1,4 @@
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, Relationship
 from uuid import UUID, uuid4
 from datetime import datetime, timezone
 from typing import Optional
@@ -54,6 +54,7 @@ class Transaction(TransactionBase, table=True):
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     business_id: UUID = Field(foreign_key="business_profiles.id", index=True)
+    category: Optional["TransactionCategory"] = Relationship()
 
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),

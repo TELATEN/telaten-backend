@@ -14,7 +14,6 @@ from app.modules.finance.models import (
     TransactionCategory,
     TransactionCategoryCreate,
 )
-from collections import defaultdict
 from app.modules.gamification.service import GamificationService
 import math
 
@@ -46,22 +45,26 @@ class FinanceService:
         data["category"] = final_category_name
         data["category_name"] = final_category_name
 
-        transaction = Transaction(**data, business_id=business_id)
-        transaction = await self.repo.create(transaction)
+        # Ensure atomic transaction
+        async with self.repo.session.begin_nested():
+            transaction = Transaction(**data, business_id=business_id)
+            transaction = await self.repo.create(transaction)
 
-        if self.gamification_service:
-            # Simple logic: 5 points per transaction for being diligent ("Telaten")
-            points_to_award = 5
-            new_total = await self.business_repo.add_points(
-                business_id, points_to_award
-            )
-
-            business = await self.business_repo.get_by_id(business_id)
-            if business:
-                await self.gamification_service.process_gamification(
-                    business.id, business.user_id, new_total
+            if self.gamification_service:
+                # Simple logic: 5 points per transaction for being diligent ("Telaten")
+                points_to_award = 5
+                new_total = await self.business_repo.add_points(
+                    business_id, points_to_award
                 )
 
+                business = await self.business_repo.get_by_id(business_id)
+                if business:
+                    await self.gamification_service.process_gamification(
+                        business.id, business.user_id, new_total
+                    )
+
+        await self.repo.session.commit()
+        await self.repo.session.refresh(transaction)
         return transaction
 
     async def get_transactions(
@@ -105,26 +108,9 @@ class FinanceService:
         elif period == "year":
             start_date = now - relativedelta(years=1)
 
-        # For summary we need all transactions within period, so using large limit
-        transactions, _ = await self.repo.get_by_business_id(
-            business_id, start_date, end_date, skip=0, limit=10000
+        total_income, total_expense, income_categories, expense_categories = (
+            await self.repo.get_summary_stats(business_id, start_date, end_date)
         )
-
-        total_income = 0.0
-        total_expense = 0.0
-        income_categories = defaultdict(float)
-        expense_categories = defaultdict(float)
-
-        for t in transactions:
-            amount = float(t.amount)
-            cat_label = t.category_name
-
-            if t.type == "INCOME":
-                total_income += amount
-                income_categories[cat_label] += amount
-            elif t.type == "EXPENSE":
-                total_expense += amount
-                expense_categories[cat_label] += amount
 
         net_profit = total_income - total_expense
 

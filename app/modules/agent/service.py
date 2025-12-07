@@ -69,6 +69,12 @@ class AgentService:
                 "completed", "Roadmap generated successfully!", {"progress": 100}
             )
 
+        except ValueError as e:
+            logger.error(f"Validation Error: {e}")
+            yield format_sse("error", f"Validation Error: {str(e)}")
+        except RuntimeError as e:
+            logger.error(f"Runtime Error: {e}")
+            yield format_sse("error", f"System Error: {str(e)}")
         except Exception as e:
             logger.error(f"Agent Workflow Error: {e}")
             yield format_sse("error", f"AI Generation failed: {str(e)}")

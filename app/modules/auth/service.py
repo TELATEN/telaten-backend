@@ -72,7 +72,7 @@ class AuthService:
     async def refresh_access_token(self, refresh_token: str) -> dict:
         try:
             payload = jwt.decode(
-                refresh_token, settings.SECRET_KEY, algorithms=["HS256"]
+                refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
             )
             if payload.get("type") != "refresh":
                 raise HTTPException(
